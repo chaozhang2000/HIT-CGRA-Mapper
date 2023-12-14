@@ -10,8 +10,8 @@ sudo apt-get install clang-12 make cmake build-essential llvm llvm-12-dev graphv
 ```
 
 2. add MAPPER\_HOME to ~/.bashrc  
-1. vim ~/.bashrc then add at the last line,for example "export MAPPER\_HOME=/home/user/HIT-CGRA-Mapper"
-2. source ~/.bashrc
+	1. vim ~/.bashrc then add at the last line,for example "export MAPPER\_HOME=/home/user/HIT-CGRA-Mapper"
+	2. source ~/.bashrc
 
 3. config HIT-CGRA-Mapper and compile
 ```

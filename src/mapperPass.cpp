@@ -1,10 +1,3 @@
-/**
- * @file mapperPass.cpp
- * @author Cheng Tan and Chao Zhang
- * @brief the top file of mapper
- * @version 0.1
- */ 
-
 #include <llvm/IR/Function.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/LoopInfo.h>

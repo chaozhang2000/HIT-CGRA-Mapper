@@ -73,8 +73,6 @@ class DFGNode {
 		 */
     int m_level;
 
-    int m_execLatency;
-    bool m_pipelinable;
     // "m_predicated" indicates whether the execution of the node depends on
     // predication or not (i.e., the predecessor probably is a "branch"). 
     bool m_isPredicatee;
@@ -199,12 +197,6 @@ class DFGNode {
 		 *  @return : if the t_node and this DFGNode is in the same cycle return true 
 		 */
 		bool shareSameCycle(DFGNode* t_node);
-
-    void setExecLatency(int);
-    bool isMultiCycleExec();
-    int getExecLatency();
-    void setPipelinable();
-    bool isPipelinable();
     bool shareFU(DFGNode*);
 };
 #endif

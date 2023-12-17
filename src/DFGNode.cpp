@@ -28,8 +28,6 @@ DFGNode::DFGNode(int t_id, Instruction* t_inst,
   m_critical = false;
   m_cycleID = new list<int>();
   m_level = 0;
-  m_execLatency = 1;
-  m_pipelinable = false;
   m_isPredicatee = false;
   m_predicatees = NULL;
   m_isPredicater = false;
@@ -269,29 +267,6 @@ string DFGNode::getJSONOpt() {
   return m_optType;
 }
 
-void DFGNode::setExecLatency(int t_execLatency) {
-  m_execLatency = t_execLatency;
-}
-
-int DFGNode::getExecLatency() {
-  return m_execLatency;
-}
-
-bool DFGNode::isMultiCycleExec() {
-  if (m_execLatency > 1) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-void DFGNode::setPipelinable() {
-  m_pipelinable = true;
-}
-
-bool DFGNode::isPipelinable() {
-  return m_pipelinable;
-}
 
 bool DFGNode::shareFU(DFGNode* t_dfgNode) {
   if (t_dfgNode->getFuType().compare(m_fuType) == 0) {

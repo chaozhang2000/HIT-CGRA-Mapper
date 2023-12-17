@@ -96,9 +96,6 @@ class DFG {
 		void reorderDFS(set<DFGNode*>* t_visited, list<DFGNode*>* t_targetPath,
                      list<DFGNode*>* t_curPath, DFGNode* targetDFGNode);
 
-    void initExecLatency(map<string, int>*);
-    void initPipelinedOpt(list<string>*);
-
 		/** judge if the target DFGNode(t_node) is unvisited and has the fewest previous DFGNodes among the nodes that haven't been visited(give a level value).
 		 * @param t_visited : a set of DFGNode which have been visited
 		 * @param t_map : a map which records how many unvisited previous node each node has
@@ -110,11 +107,8 @@ class DFG {
   public:
 		/**The constructor function of class DFG
 		 * @param t_F the function processed by functionpass
-		 * @param the list of target loops in the t_F,which is produced by the getTargetLoops function in mapperPass.cpp.But now it is always empty because our test functions do not contain loops now.
-		 * @param t_targetFunction if this param is true,generate the DFG for all inst in function,if this param is false generate the DFG only for the target loop in the function.
-		 * @param t_precisionAware TODO
 		 */
-		DFG(Function& t_F,map<string, int>* t_execLatency, list<string>* t_pipelinedOpt);
+		DFG(Function& t_F);
 
 		/** the list to save cycles(环) in DFG,
 		 * but the kernel dose not have cycles now,so this list is useless now.

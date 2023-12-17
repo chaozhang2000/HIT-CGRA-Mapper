@@ -13,16 +13,13 @@
  * 2. use construct() function to construct DFG
  * 3. init exec latency and pipelined opt (not used now)
  */
-DFG::DFG(Function& t_F,map<string, int>* t_execLatency, list<string>* t_pipelinedOpt) {
+DFG::DFG(Function& t_F) {
   m_num = 0;
   m_orderedNodes = NULL;
   m_CDFGFused = false;
   m_cycleNodeLists = new list<list<DFGNode*>*>();
 
   construct(t_F);
-  initExecLatency(t_execLatency);
-  initPipelinedOpt(t_pipelinedOpt);
-
 }
 
 
@@ -37,7 +34,9 @@ DFG::DFG(Function& t_F,map<string, int>* t_execLatency, list<string>* t_pipeline
  * 2. else all inst is in target loops will not be ignore and other insts in function will be ignored. Not all inst in the function belong to target loop.For example, instructions for entering and exiting functions
  */
 bool DFG::shouldIgnore(Instruction* t_inst) {
-  return false;
+	string ret = "ret";
+	if(t_inst->getOpcodeName()== ret)return true;
+	else return false;
 }
 
  /** 
@@ -55,14 +54,9 @@ void DFG::construct(Function& t_F) {
   m_DFGEdges.clear();
   nodes.clear();
   m_ctrlEdges.clear();
-
   int nodeID = 0;
-  int ctrlEdgeID = 0;
   int dfgEdgeID = 0;
-
-  cout<<"*** constructing DFG of current function: "<<t_F.getName().str()<<"\n";
-
-  // FIXME: eleminate duplicated edges.
+  cout<<"*** constructing DFG of target function: "<<t_F.getName().str()<<"\n";
 	
 
 	//2. Traverse all basic block in target function 
@@ -71,18 +65,11 @@ void DFG::construct(Function& t_F) {
     BasicBlock *curBB = &*BB;
 		errs()<<"----------------------------------\n";
     errs()<<"*** current basic block beginning: "<<*curBB->begin()<<"\n";
-		//print all successor basic block of current basic block
-    for (BasicBlock* sucBB : successors(curBB)) {
-      errs()<<"   ****** successor basic block beginning: "<<*sucBB->begin()<<"\n";
-    }
 
      // Construct DFG nodes.
-		 // !!!!!!!!!!!!!!!!!!!!!!330-350 is important
-    for (BasicBlock::iterator II=curBB->begin(),
-        IEnd=curBB->end(); II!=IEnd; ++II) {
+    for (BasicBlock::iterator II=curBB->begin(),IEnd=curBB->end(); II!=IEnd; ++II) {
       Instruction* curII = &*II;
-
-      // Ignore this IR if it is out of the scope.
+      // Ignore this IR if it is ret.
       if (shouldIgnore(curII)) {
         errs()<<*curII<<" *** ignored by pass due to that the BB is out "<<
             "of the scope (target loop)\n";
@@ -90,66 +77,13 @@ void DFG::construct(Function& t_F) {
       }
       errs()<<*curII;
       DFGNode* dfgNode;
-      if (hasNode(curII)) {
-        dfgNode = getNode(curII);
-      } else {
-        dfgNode = new DFGNode(nodeID++,  curII, getValueName(curII));
-        nodes.push_back(dfgNode);
-      }
+      dfgNode = new DFGNode(nodeID++,  curII, getValueName(curII));
+      nodes.push_back(dfgNode);
       errs()<<" (dfgNode ID: "<<dfgNode->getID()<<")\n";
-    }
-		// !!!!!!!352-396 和控制流的产生有关，目前不关心，不重要。
-		//getTerminator()方法是BasicBlock类的一个成员函数，返回指向该基本块终结指令的指针，
-		//基本块是LLVM中表示程序控制流的最小单元，是一系列指令的序列，只有一个入口和出口，出口是终结指令，是一种控制流指令，如分支跳转返回等，决定了程序跳转到哪个基本块
-    Instruction* terminator = curBB->getTerminator();
-
-		//如果terminator可以忽略就不需要考虑下一个运行的基本块了,successors()可以获取后继的基本块的指针
-    if (shouldIgnore(terminator))
-      continue;
-		//遍历所有的后继基本块，将后继基本块的不可忽视的入口指令也添加到节点，并添加控制箭头，即从当前基本块的出口指令指向到后继基本块入口指令的箭头
-    for (BasicBlock* sucBB : successors(curBB)) {
-      // TODO: get the live-in nodes rather than front() and connect them
-			// 遍历每个后继基本块中的所有指令
-      for (BasicBlock::iterator II=sucBB->begin(),
-          IEnd=sucBB->end(); II!=IEnd; ++II) {
-        Instruction* inst = &*II;
-        // Ignore this IR if it is out of the scope.
-        if (shouldIgnore(inst))
-          continue;
-				//只处理后继模块的入口指令，为后继基本块的入口指令创建DFGNode节点
-        if (isLiveInInst(sucBB, inst)) {
-          errs()<<" check inst: "<<*inst;//<<"\n";
-
-          DFGNode* dfgNode;
-          if (hasNode(inst)) {
-            dfgNode = getNode(inst);
-          } else {
-            dfgNode = new DFGNode(nodeID++,  inst, getValueName(inst));
-            nodes.push_back(dfgNode);
-          }
-      errs()<<" (dfgNode ID: "<<dfgNode->getID()<<")\n";
-          errs()<<"!!!!!!! construct ctrl flow: "<<*terminator<<"->"<<*inst<<"\n";
-          // Construct contrl flow edges.
-          DFGEdge* ctrlEdge;
-          if (hasCtrlEdge(getNode(terminator), dfgNode)) {
-            ctrlEdge = getCtrlEdge(getNode(terminator), dfgNode);
-          }
-          else {
-            ctrlEdge = new DFGEdge(ctrlEdgeID++, getNode(terminator), dfgNode, true);
-            m_ctrlEdges.push_back(ctrlEdge);
-          }
-
-        }
-      }
     }
   }
-
- 
-
-  // Construct data flow edges.
-	// second for loop
+  	// Construct data flow edges.
   for (DFGNode* node: nodes) {
-//    nodes.push_back(Node(curII, getValueName(curII)));
     Instruction* curII = node->getInst();
     assert(node == getNode(curII));
     switch (curII->getOpcode()) {
@@ -199,22 +133,16 @@ void DFG::construct(Function& t_F) {
       default: {
         for (Instruction::op_iterator op = curII->op_begin(), opEnd = curII->op_end(); op != opEnd; ++op) {
           Instruction* tempInst = dyn_cast<Instruction>(*op);
-						//errs()<<*curII<<"\n";		
-          if (tempInst and !shouldIgnore(tempInst)) {
-						//errs()<<*tempInst<<"\n";		
+          if (tempInst) {
             DFGEdge* dfgEdge;
-            if (hasNode(tempInst)) {
               if (hasDFGEdge(getNode(tempInst), node))
                 dfgEdge = getDFGEdge(getNode(tempInst), node);
               else {
                 dfgEdge = new DFGEdge(dfgEdgeID++, getNode(tempInst), node);
                 m_DFGEdges.push_back(dfgEdge);
               }
-            }
-          } else {
-            // Original Branch node will take three
-            // predecessors (i.e., condi, true, false).
-            if(!node->isBranch())
+          } 
+					else {
               node->addConst();
           } 
         }
@@ -345,51 +273,6 @@ void DFG::reorderDFS(set<DFGNode*>* t_visited, list<DFGNode*>* t_targetPath,
 
 }
 
-
-void DFG::initExecLatency(map<string, int>* t_execLatency) {
-  set<string> targetOpt;
-  for (map<string, int>::iterator iter=t_execLatency->begin();
-      iter!=t_execLatency->end(); ++iter) {
-    targetOpt.insert(iter->first);
-  }
-  for (DFGNode* node: nodes) {
-    if (t_execLatency->find(node->getOpcodeName()) != t_execLatency->end()) {
-      string opcodeName = node->getOpcodeName();
-      node->setExecLatency((*t_execLatency)[opcodeName]);
-      targetOpt.erase(opcodeName);
-    }
-  }
-  if (!targetOpt.empty()) {
-    cout<<"\033[0;31mPlease check the operations targeting multi-cycle execution in <param.json>:\"\033[0m";
-    for (set<string>::iterator it = targetOpt.begin(); it != targetOpt.end(); ++it) {
-      cout<<" "<<*it<<" "; // Note the "*" here
-    }
-    cout<<"\033[0;31m\".\033[0m"<<endl;
-  }
-}
-
-void DFG::initPipelinedOpt(list<string>* t_pipelinedOpt) {
-  set<string> targetOpt;
-  for (string opt: *t_pipelinedOpt) {
-    targetOpt.insert(opt);
-  }
-  for (DFGNode* node: nodes) {
-    list<string>::iterator it;
-    it = find(t_pipelinedOpt->begin(), t_pipelinedOpt->end(), node->getOpcodeName());
-    if(it != t_pipelinedOpt->end()) {
-      string opcodeName = node->getOpcodeName();
-      node->setPipelinable();
-      targetOpt.erase(opcodeName);
-    }
-  }
-  if (!targetOpt.empty()) {
-    cout<<"\033[0;31mPlease check the pipelinable operations in <param.json>:\"\033[0m";
-    for (set<string>::iterator it = targetOpt.begin(); it != targetOpt.end(); ++it) {
-      cout<<" "<<*it<<" "; // Note the "*" here
-    }
-    cout<<"\033[0;31m\".\033[0m"<<endl;
-  }
-}
 /**
  * @param t_bb :input basic block
  * @param t_inst :input inst

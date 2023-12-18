@@ -8,7 +8,7 @@
 #include <set>
 #include "json.h"
 #include "DFG.h"
-#include "generated/autoconf.h"
+#include "common.h"
 
 using namespace llvm;
 using namespace std;
@@ -40,10 +40,10 @@ namespace {
       ifstream i("./param.json");
       if (!i.good()) {
 
-        cout<< "=============================================================\n";
-        cout<<"\033[0;31mPlease provide a valid <param.json> in the current directory."<<endl;
-        cout<<"A set of default parameters is leveraged.\033[0m"<<endl;
-        cout<< "=============================================================\n";
+        errs()<< "=============================================================\n";
+        errs()<<"\033[0;31mPlease provide a valid <param.json> in the current directory.\n";
+        errs()<<"A set of default parameters is leveraged.\033[0m\n";
+        errs()<<"=============================================================\n";
       } else {
         json param;
         i >> param; 
@@ -53,29 +53,22 @@ namespace {
 
       // Check existance. if the function is our target function
       if (target_function!=t_F.getName().str()) {
-        cout<<"[function \'"<<t_F.getName().str()<<"\' is not our target function]\n";
         return false;
       }
-      cout << "==================================\n";
-      cout<<"[function \'"<<t_F.getName().str()<<"\' is our target function]\n";
-
 
       DFG* dfg = new DFG(t_F);
+			if (dfg->DFG_error){
+				return false;
+			}
+#ifdef CONFIG_DFG_DEBUG 
       // Show the count of different opcodes (IRs).
-      cout << "==================================\n";
-      cout << "[show opcode count]\n";
       dfg->showOpcodeDistribution();
+#endif
 
       // Generate the DFG dot file.
-      cout << "==================================\n";
-      cout << "[generate dot for DFG]\n";
 			bool isTrimmedDemo = true;
       dfg->generateDot(t_F, isTrimmedDemo);
 
-      // Generate the DFG dot file.
-      cout << "==================================\n";
-      cout << "[generate JSON for DFG]\n";
-      dfg->generateJSON();
 			return true;
     }
 

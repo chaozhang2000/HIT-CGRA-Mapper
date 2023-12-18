@@ -43,14 +43,10 @@ class DFGEdge
 		 * @param t_dst pointer to the dst DFGNode
 		 */
     DFGEdge(int t_id, DFGNode* t_src, DFGNode* t_dst);
-    DFGEdge(int t_id, DFGNode* t_src, DFGNode* t_dst, bool t_isCtrlEdge);
-    void setID(int);
     int getID();
     DFGNode* getSrc();
     DFGNode* getDst();
     void connect(DFGNode*, DFGNode*);
-    DFGNode* getConnectedNode(DFGNode*);
-    bool isCtrlEdge();
 };
 
 #endif

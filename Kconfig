@@ -38,3 +38,11 @@ config CC_DEBUG
   bool "Enable debug information"
   default n
 endmenu
+
+
+menu "Debugging"
+
+config DFG_DEBUG
+  bool "Enable DFG debug print"
+  default y
+endmenu

@@ -32,7 +32,6 @@ class DFGEdge
 		/**The var to record dst DFGNode,the edge points from src DFGNode to dst DFGNode
 		 */
     DFGNode *m_dst;
-    bool m_isCtrlEdge;
 
   public:
 

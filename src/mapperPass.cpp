@@ -69,6 +69,8 @@ namespace {
 			bool isTrimmedDemo = true;
       dfg->generateDot(t_F, isTrimmedDemo);
 
+			delete dfg;
+
 			return true;
     }
 

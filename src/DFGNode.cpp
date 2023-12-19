@@ -8,28 +8,15 @@
 #include "DFGNode.h"
 #include "common.h"
 
-/**what is in this function:
- * init the DFGNode for example init the id of DFGNode(m_id) = t_id
- * get the OpcodeName form the t_inst and init the m_opcodeName and so on
- *
-*/
-DFGNode::DFGNode(int t_id, Instruction* t_inst) {
-  m_id = t_id;
-  m_inst = t_inst;
-  m_opcodeName = t_inst->getOpcodeName();
-  m_numConst = 0;
+DFGNode::DFGNode(int t_id, string t_name){
+	m_id = t_id;
+	m_name = t_name;
 }
-
 int DFGNode::getID() {
   return m_id;
 }
-
-Instruction* DFGNode::getInst() {
-  return m_inst;
-}
-
-string DFGNode::getOpcodeName() {
-  return m_opcodeName;
+string DFGNode::getName(){
+	return m_name;
 }
 
 void DFGNode::setInEdge(DFGEdge* t_dfgEdge) {
@@ -43,8 +30,3 @@ void DFGNode::setOutEdge(DFGEdge* t_dfgEdge) {
       m_outEdges.end())
     m_outEdges.push_back(t_dfgEdge);
 }
-
-void DFGNode::addConst() {
-  ++m_numConst;
-}
-

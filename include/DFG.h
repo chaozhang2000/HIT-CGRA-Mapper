@@ -20,7 +20,7 @@
 #include <map>
 #include <iostream>
 
-#include "DFGNode.h"
+#include "DFGNodeInst.h"
 #include "DFGEdge.h"
 
 using namespace llvm;
@@ -41,7 +41,8 @@ class DFG {
 
     string changeIns2Str(Instruction* ins);
 
-    DFGNode* getNode(Value*);
+    DFGNodeInst* getNode(Value*);
+		bool NodeIsInst(DFGNode*);
 
 		/**Get the pointer of DFGEdge from t_src to t_dst DFGNode.The DFGEdge must be confirmed to have been created.You can use hasDFGEdge() to check this.
 		 * @param t_src the pointer to the src DFGNode
@@ -71,6 +72,10 @@ class DFG {
 		 * @param t_F the function processed by functionpass
 		 */
 		DFG(Function& t_F);
+
+		/**The destructor function of class DFG
+		 */
+		~DFG();
 
 		/**Extract DFG from specific function 
  		* @param t_F the function pointer which the mapperPass is processing

@@ -7,11 +7,6 @@
 #ifndef DFGNode_H
 #define DFGNode_H
 
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/Support/raw_ostream.h>
-
 #include <string>
 #include <list>
 #include <stdio.h>
@@ -19,7 +14,6 @@
 
 #include "DFGEdge.h"
 
-using namespace llvm;
 using namespace std;
 
 class DFGEdge;
@@ -27,8 +21,8 @@ class DFGEdge;
 class DFGNode {
   private:
     int m_id;
-    Instruction* m_inst;
-    string m_opcodeName;
+		string m_name;
+
 		/**the list to save the pointers of input DFGEdges
 		 */
     list<DFGEdge*> m_inEdges;
@@ -37,23 +31,12 @@ class DFGNode {
 		 */
     list<DFGEdge*> m_outEdges;
 
-		/**this variable is used to record how many const there are in the operands of the current DFG node
-		 */
-    int m_numConst;
-
   public:
-		/**The constructor function of class DFGNode
-		 * @param t_id :the id that give the DFGNode
-		 * @param t_precisionAware :TODO
-		 * @param t_inst :The instruction corresponding to this DFGNode
-		 */
-		DFGNode(int t_id, Instruction* t_inst);
+		DFGNode(int t_id,string t_name);
+		virtual ~DFGNode(){};
 
     int getID();
-
-    Instruction* getInst();
-
-    string getOpcodeName();
+		string getName();
 
 		/** add t_dfgEdge to m_inEdges of the DFGNode
 		 *  @param t_dfgEdge : the pointer of DFGEdge to be added to the m_inEdges
@@ -63,9 +46,5 @@ class DFGNode {
 		 *  @param t_dfgEdge : the pointer of DFGEdge to be added to the m_outEdges
 		 */
     void setOutEdge(DFGEdge* t_dfgEdge);
-
-		/** m_numConst + 1
-		 */
-    void addConst();
 };
 #endif

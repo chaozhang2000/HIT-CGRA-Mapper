@@ -7,7 +7,6 @@
 #include <fstream>
 #include "DFG.h"
 #include "common.h"
-
 /**
  * How this function is implemented:
  * 1. init some var
@@ -17,6 +16,22 @@ DFG::DFG(Function& t_F) {
 	DFG_error = false;
   m_num = 0;
   construct(t_F);
+}
+
+/**
+ * How this function is implemented:
+ * 1. delete the DFGNodes in nodes list
+ * 2. delete the DFGEdges in m_DFGEdges
+ */
+DFG::~DFG() {
+				list<DFGNode*>::iterator node_it;
+				for (node_it=nodes.begin();node_it!=nodes.end();++node_it){
+					delete *node_it;
+				}
+				list<DFGEdge*>::iterator edge_it;
+				for (edge_it=m_DFGEdges.begin();edge_it!=m_DFGEdges.end();++edge_it){
+					delete *edge_it;
+				}
 }
 
 /** Used to determine whether the instruction should be ignored(not add to the dfg)
@@ -49,7 +64,7 @@ void DFG::construct(Function& t_F) {
 	//make sure this function has only one basic block
 	if(t_F.getBasicBlockList().size()>1) {
 		DFG_error = true;
-		errs() <<ANSI_FMT("The II have more then one basic block!", ANSI_FG_RED)<<"\n";
+		outs() <<ANSI_FMT("The II have more then one basic block!", ANSI_FG_RED)<<"\n";
 		return;
 	}
 	//make sure every inst has less than two operands
@@ -57,8 +72,8 @@ void DFG::construct(Function& t_F) {
     Instruction* curII = &*II;
 		if (curII->getNumOperands()>2){
 			DFG_error = true;
-			errs() <<ANSI_FMT("The Inst have more then two operands, not support yet!", ANSI_FG_RED)<<"\n";
-			errs() <<ANSI_FG_RED<<changeIns2Str(curII)<<ANSI_NONE<<"\n";
+			outs() <<ANSI_FMT("The Inst have more then two operands, not support yet!", ANSI_FG_RED)<<"\n";
+			outs() <<ANSI_FG_RED<<changeIns2Str(curII)<<ANSI_NONE<<"\n";
 			return;
 		}
 	}
@@ -66,8 +81,8 @@ void DFG::construct(Function& t_F) {
 
 	// Construct dfg nodes
 #ifdef CONFIG_DFG_DEBUG 
-	ERRS("==================================",ANSI_FG_CYAN); 
-  ERRS("[constructing DFG of target function: "<< t_F.getName().str()<<"]",ANSI_FG_CYAN);
+	OUTS("==================================",ANSI_FG_CYAN); 
+  OUTS("[constructing DFG of target function: "<< t_F.getName().str()<<"]",ANSI_FG_CYAN);
 #endif
   for (BasicBlock::iterator II=t_F.begin()->begin(),IEnd=t_F.begin()->end(); II!=IEnd; ++II) {
     Instruction* curII = &*II;
@@ -75,19 +90,21 @@ void DFG::construct(Function& t_F) {
     if (shouldIgnore(curII)) {
       continue;
     }
-    DFGNode* dfgNode;
-    dfgNode = new DFGNode(nodeID++,  curII);
+    DFGNodeInst* dfgNode;
+    dfgNode = new DFGNodeInst(nodeID++,curII,curII->getOpcodeName());
     nodes.push_back(dfgNode);
 #ifdef CONFIG_DFG_DEBUG 
-    errs()<< *curII<<" -> (dfgNode ID: "<<dfgNode->getID()<<")\n";
+    outs()<< *curII<<" -> (dfgNode ID: "<<dfgNode->getID()<<")\n";
 #endif
   }
   // Construct data flow edges.
   for (DFGNode* node: nodes) {
-    Instruction* curII = node->getInst();
-    assert(node == getNode(curII));
+					DFGNodeInst* nodeInst = dynamic_cast<DFGNodeInst*>(node);
+					if(nodeInst){
+    Instruction* curII = nodeInst->getInst();
         for (Instruction::op_iterator op = curII->op_begin(), opEnd = curII->op_end(); op != opEnd; ++op) {
           Instruction* tempInst = dyn_cast<Instruction>(*op);
+					//the operands comes from other inst, need to create DFGEdge
           if (tempInst) {
             DFGEdge* dfgEdge;
               if (hasDFGEdge(getNode(tempInst), node))
@@ -97,11 +114,23 @@ void DFG::construct(Function& t_F) {
                 m_DFGEdges.push_back(dfgEdge);
               }
           } 
-					else {
-              node->addConst();
+					//if the operand is a const
+					//else if(ConstantInt *C = dyn_cast<ConstantInt>(*op)){
+					else if(dyn_cast<ConstantInt>(*op)){
+              nodeInst->addConst();
+							//outs() << C->getSExtValue() << "\n";
+							//outs()<< *curII <<"\n";
           } 
+					//if the operand is a param
+					else{
+							//outs()<<"is a param"<<"\n";
+							//outs()<<*curII<<"\n";
+              nodeInst->addConst();
+					
+					}
         }
     }
+					}
 
   connectDFGNodes();
 }
@@ -131,23 +160,16 @@ void DFG::generateDot(Function &t_F, bool t_isTrimmedDemo) {
 
   //Dump DFG nodes.
   for (DFGNode* node: nodes) {
+		if(NodeIsInst(node)){
 //    if (dyn_cast<Instruction>((*node)->getInst())) {
-    if (t_isTrimmedDemo) {
-      file << "\tNode" << node->getID() << node->getOpcodeName() << "[shape=record, label=\"" << "(" << node->getID() << ") " << node->getOpcodeName() << "\"];\n";
-    } else {
-      file << "\tNode" << node->getInst() << "[shape=record, label=\"" <<
-          changeIns2Str(node->getInst()) << "\"];\n";
-    }
+      file << "\tNode" << node->getID() << node->getName() << "[shape=record, label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
+		}
   }
   // Dump data flow.
   file << "edge [color=red]" << "\n";
   for (DFGEdge* edge: m_DFGEdges) {
     // Distinguish data and control flows. Make ctrl flow invisible.
-      if (t_isTrimmedDemo) {
-        file << "\tNode" << edge->getSrc()->getID() << edge->getSrc()->getOpcodeName() << " -> Node" << edge->getDst()->getID() << edge->getDst()->getOpcodeName() << "\n";
-      } else {
-        file << "\tNode" << edge->getSrc()->getInst() << " -> Node" << edge->getDst()->getInst() << "\n";
-      }
+        file << "\tNode" << edge->getSrc()->getID() << edge->getSrc()->getName() << " -> Node" << edge->getDst()->getID() << edge->getDst()->getName() << "\n";
   }
   file << "}\n";
   file.close();
@@ -156,24 +178,31 @@ void DFG::generateDot(Function &t_F, bool t_isTrimmedDemo) {
 
 void DFG::showOpcodeDistribution() {
 
-	ERRS("==================================",ANSI_FG_CYAN); 
-  ERRS("[show opcode count]",ANSI_FG_CYAN);
+	OUTS("==================================",ANSI_FG_CYAN); 
+  OUTS("[show opcode count]",ANSI_FG_CYAN);
   map<string, int> opcodeMap;
   for (DFGNode* node: nodes) {
-    opcodeMap[node->getOpcodeName()] += 1;
+    opcodeMap[node->getName()] += 1;
   }
   for (map<string, int>::iterator opcodeItr=opcodeMap.begin();
       opcodeItr!=opcodeMap.end(); ++opcodeItr) {
-    errs()<< (*opcodeItr).first << " : " << (*opcodeItr).second << "\n";
+    outs()<< (*opcodeItr).first << " : " << (*opcodeItr).second << "\n";
   }
-  errs()<< "DFG node count: "<<nodes.size()<<"; DFG edge count: "<<m_DFGEdges.size()<<";\n";
+  outs()<< "DFG node count: "<<nodes.size()<<"; DFG edge count: "<<m_DFGEdges.size()<<";\n";
 }
 
-DFGNode* DFG::getNode(Value* t_value) {
+bool DFG::NodeIsInst(DFGNode*node){
+if(dynamic_cast<DFGNodeInst*>(node)){
+				return true;
+}
+return false;
+}
+DFGNodeInst* DFG::getNode(Value* t_value) {
   for (DFGNode* node: nodes) {
-    if (node->getInst() == t_value) {
-      return node;
-    }
+					DFGNodeInst* nodeInst = dynamic_cast<DFGNodeInst*>(node);
+					if(nodeInst&&nodeInst->getInst() == t_value){
+      return nodeInst;
+					}
   }
   assert("ERROR cannot find the corresponding DFG node.");
   return NULL;

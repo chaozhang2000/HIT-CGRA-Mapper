@@ -39,5 +39,6 @@
 #define ANSI_FMT(str, fmt) fmt str ANSI_NONE
 
 #define ERRS(coutfmt,color) errs()<<color<<coutfmt<<ANSI_NONE<<"\n"
+#define OUTS(coutfmt,color) outs()<<color<<coutfmt<<ANSI_NONE<<"\n"
 
 #endif

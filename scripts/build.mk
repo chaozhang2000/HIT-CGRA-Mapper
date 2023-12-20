@@ -16,14 +16,14 @@ BINARY   = $(BUILD_DIR)/$(NAME)$(SO)
 
 # Compilation flags
 ifeq ($(CC),clang)
-CXX := clang++
+CXX := clang++-12
 else
 CXX := g++
 endif
 LD := $(CXX)
 INCLUDES = $(addprefix -I, $(INC_PATH))
-CFLAGS  := -O2 -Wall -MMD -Werror $(INCLUDES) $(CFLAGS)
-LDFLAGS := -O2 $(LDFLAGS)
+CFLAGS  :=  -Wall -MMD -Werror $(INCLUDES) $(CFLAGS)
+LDFLAGS :=  $(LDFLAGS)
 OBJS = $(SRCS:%.c=$(OBJ_DIR)/%.o) $(CXXSRCS:%.cpp=$(OBJ_DIR)/%.o)
 # Compilation patterns
 $(OBJ_DIR)/%.o: %.c

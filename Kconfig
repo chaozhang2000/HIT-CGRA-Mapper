@@ -6,11 +6,14 @@ choice
   default CC_GPP
 config CC_GPP
   bool "g++"
+config CC_CLANG
+  bool "clang++-12"
 endchoice
 
 config CC
   string
   default "g++" if CC_GPP
+  default "clang" if CC_CLANG
   default "none"
 
 choice

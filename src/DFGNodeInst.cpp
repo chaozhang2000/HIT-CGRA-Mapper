@@ -1,6 +1,7 @@
 #include "DFGNodeInst.h"
 #include "common.h"
 
+const string DFGNodeInst::color = "black";
 DFGNodeInst::DFGNodeInst(int t_id,Instruction*t_inst,string t_name):DFGNode(t_id,t_name){
 	m_inst = t_inst;
 	m_opcodeName = t_inst->getOpcodeName();
@@ -18,3 +19,4 @@ string DFGNodeInst::getOpcodeName() {
 void DFGNodeInst::addConst() {
   ++m_numConst;
 }
+

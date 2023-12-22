@@ -1,14 +1,6 @@
 #ifndef DFGNodeInst_H
 #define DFGNodeInst_H
-#include <llvm/IR/Value.h>
 #include <llvm/IR/Instruction.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/Support/raw_ostream.h>
-
-#include <string>
-#include <list>
-#include <stdio.h>
-#include <iostream>
 #include "DFGNode.h"
 
 using namespace llvm;
@@ -22,6 +14,7 @@ class DFGNodeInst:public DFGNode{
 		 */
     int m_numConst;
 	public:
+		static const string color;
 		/**The constructor function of class DFGNodeInst
 		 * @param t_id :the id that give the DFGNode
 		 * @param t_inst :The instruction corresponding to this DFGNodeInst
@@ -32,6 +25,8 @@ class DFGNodeInst:public DFGNode{
     Instruction* getInst();
 
     string getOpcodeName();
+
+		string getColor();
 
 		/** m_numConst + 1
 		 */

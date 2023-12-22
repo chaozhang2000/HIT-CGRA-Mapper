@@ -1,16 +1,9 @@
-/*
- * ======================================================================
- * DFGEdge.cpp
- * ======================================================================
- * DFG edge implementation.
- *
- * Author : Cheng Tan
- *   Date : July 19, 2019
- */
 
 #include "DFGEdge.h"
 #include "common.h"
 
+
+const string DFGEdge::color= "black";
 DFGEdge::DFGEdge(int t_id, DFGNode* t_src, DFGNode* t_dst) {
   m_id = t_id;
   m_src = t_src;

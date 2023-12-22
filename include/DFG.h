@@ -5,27 +5,19 @@
  * @version 0.1
  */
 
-#include <llvm/IR/Function.h>
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/FileSystem.h>
-#include <llvm/IR/Use.h>
-//#include <llvm/Analysis/CFG.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include <list>
-#include <set>
-#include <map>
-#include <iostream>
-
 #include "DFGNodeInst.h"
 #include "DFGEdge.h"
+#include "DFGNode.h"
+#include "DFGNodeConst.h"
+#include "DFGNodeParam.h"
 
+#define DFG_ERR(info) DFG_error = true;\
+																		 OUTS(info,ANSI_FG_RED);\
+																		 return
 using namespace llvm;
 using namespace std;
-///the class of DFG
+
 class DFG {
   private:
     int m_num;
@@ -33,7 +25,19 @@ class DFG {
 		/**List to save the pointer of DFGEdges in DFG
 		 */
     list<DFGEdge*> m_DFGEdges; 
-															 
+
+		/**List to save the pointer of DFGInstNodes in DFG
+		 */
+    list<DFGNodeInst*> m_InstNodes;
+
+		/**List to save the pointer of DFGConstNodes in DFG
+		 */
+    list<DFGNodeConst*> m_ConstNodes;
+
+		/**List to save the pointer of DFGConstNodes in DFG
+		 */
+    list<DFGNodeParam*> m_ParamNodes;
+
 		/** 
 		* this function is used to connect DFGNodes to generate DFG
 		*/
@@ -41,8 +45,7 @@ class DFG {
 
     string changeIns2Str(Instruction* ins);
 
-    DFGNodeInst* getNode(Value*);
-		bool NodeIsInst(DFGNode*);
+    DFGNodeInst* getInstNode(Value*);
 
 		/**Get the pointer of DFGEdge from t_src to t_dst DFGNode.The DFGEdge must be confirmed to have been created.You can use hasDFGEdge() to check this.
 		 * @param t_src the pointer to the src DFGNode
@@ -64,9 +67,6 @@ class DFG {
 		 */
 		bool DFG_error;
 
-		/**List to save the pointer of DFGNodes in DFG
-		 */
-    list<DFGNode*> nodes;
 
 		/**The constructor function of class DFG
 		 * @param t_F the function processed by functionpass

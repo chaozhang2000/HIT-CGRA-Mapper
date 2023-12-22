@@ -11,14 +11,8 @@
 #ifndef DFGEdge_H
 #define DFGEdge_H
 
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
-
 #include "DFGNode.h"
-
-using namespace llvm;
-
-class DFGNode;
 
 class DFGEdge
 {
@@ -34,6 +28,8 @@ class DFGEdge
     DFGNode *m_dst;
 
   public:
+
+		static const string color;
 
 		/**The constructor function of class DFGEdge
 		 * assign value to m_id,m_src and m_dst to create a Edge from src DFGNode to dst DFGNode

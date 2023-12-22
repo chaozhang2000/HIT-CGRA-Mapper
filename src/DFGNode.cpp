@@ -7,7 +7,6 @@
 
 #include "DFGNode.h"
 #include "common.h"
-
 DFGNode::DFGNode(int t_id, string t_name){
 	m_id = t_id;
 	m_name = t_name;

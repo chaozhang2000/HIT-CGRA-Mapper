@@ -1,11 +1,7 @@
-/**
- * @file DFG.cpp
- * @author Cheng Tan 
- * @brief  the implementation of DFG class
- * @version 0.1
- */
-#include <fstream>
 #include "DFG.h"
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include <fstream>
 #include "common.h"
 /**
  * How this function is implemented:
@@ -24,9 +20,13 @@ DFG::DFG(Function& t_F) {
  * 2. delete the DFGEdges in m_DFGEdges
  */
 DFG::~DFG() {
-				list<DFGNode*>::iterator node_it;
-				for (node_it=nodes.begin();node_it!=nodes.end();++node_it){
-					delete *node_it;
+				list<DFGNodeInst*>::iterator inst_node_it;
+				for (inst_node_it=m_InstNodes.begin();inst_node_it!=m_InstNodes.end();++inst_node_it){
+					delete *inst_node_it;
+				}
+				list<DFGNodeConst*>::iterator const_node_it;
+				for (const_node_it=m_ConstNodes.begin();const_node_it!=m_ConstNodes.end();++const_node_it){
+					delete *const_node_it;
 				}
 				list<DFGEdge*>::iterator edge_it;
 				for (edge_it=m_DFGEdges.begin();edge_it!=m_DFGEdges.end();++edge_it){
@@ -56,25 +56,20 @@ void DFG::construct(Function& t_F) {
 
 	//Clear the data structions which is used to save nodes and edges
   m_DFGEdges.clear();
-  nodes.clear();
+  m_InstNodes.clear();
   int nodeID = 0;
   int dfgEdgeID = 0;
 	
 
 	//make sure this function has only one basic block
 	if(t_F.getBasicBlockList().size()>1) {
-		DFG_error = true;
-		outs() <<ANSI_FMT("The II have more then one basic block!", ANSI_FG_RED)<<"\n";
-		return;
+		DFG_ERR("The II have more then one basic block!");
 	}
 	//make sure every inst has less than two operands
   for (BasicBlock::iterator II=t_F.begin()->begin(),IEnd=t_F.begin()->end(); II!=IEnd; ++II) {
     Instruction* curII = &*II;
 		if (curII->getNumOperands()>2){
-			DFG_error = true;
-			outs() <<ANSI_FMT("The Inst have more then two operands, not support yet!", ANSI_FG_RED)<<"\n";
-			outs() <<ANSI_FG_RED<<changeIns2Str(curII)<<ANSI_NONE<<"\n";
-			return;
+			DFG_ERR("The Inst have more then two operands, not support yet!\n"<<changeIns2Str(curII));
 		}
 	}
 
@@ -90,46 +85,66 @@ void DFG::construct(Function& t_F) {
     if (shouldIgnore(curII)) {
       continue;
     }
-    DFGNodeInst* dfgNode;
-    dfgNode = new DFGNodeInst(nodeID++,curII,curII->getOpcodeName());
-    nodes.push_back(dfgNode);
+    DFGNodeInst* dfgNodeInst;
+#ifdef CONFIG_DFG_FULL_INST
+    dfgNodeInst = new DFGNodeInst(nodeID++,curII,changeIns2Str(curII));
+#else
+    dfgNodeInst = new DFGNodeInst(nodeID++,curII,curII->getOpcodeName());
+#endif
+    m_InstNodes.push_back(dfgNodeInst);
 #ifdef CONFIG_DFG_DEBUG 
-    outs()<< *curII<<" -> (dfgNode ID: "<<dfgNode->getID()<<")\n";
+    outs()<< *curII<<" -> (dfgNode ID: "<<dfgNodeInst->getID()<<")\n";
 #endif
   }
   // Construct data flow edges.
-  for (DFGNode* node: nodes) {
-					DFGNodeInst* nodeInst = dynamic_cast<DFGNodeInst*>(node);
-					if(nodeInst){
+  for (DFGNodeInst* nodeInst: m_InstNodes) {
     Instruction* curII = nodeInst->getInst();
         for (Instruction::op_iterator op = curII->op_begin(), opEnd = curII->op_end(); op != opEnd; ++op) {
-          Instruction* tempInst = dyn_cast<Instruction>(*op);
 					//the operands comes from other inst, need to create DFGEdge
-          if (tempInst) {
+          if (Instruction* tempInst = dyn_cast<Instruction>(*op)) {
             DFGEdge* dfgEdge;
-              if (hasDFGEdge(getNode(tempInst), node))
-                dfgEdge = getDFGEdge(getNode(tempInst), node);
+              if (hasDFGEdge(getInstNode(tempInst), nodeInst))
+                dfgEdge = getDFGEdge(getInstNode(tempInst), nodeInst);
               else {
-                dfgEdge = new DFGEdge(dfgEdgeID++, getNode(tempInst), node);
+                dfgEdge = new DFGEdge(dfgEdgeID++, getInstNode(tempInst), nodeInst);
                 m_DFGEdges.push_back(dfgEdge);
               }
           } 
 					//if the operand is a const
-					//else if(ConstantInt *C = dyn_cast<ConstantInt>(*op)){
-					else if(dyn_cast<ConstantInt>(*op)){
+					else if(ConstantData* const_data = dyn_cast<ConstantData>(*op)){
+							ConstantInt * const_int = dyn_cast<ConstantInt>(*op);
+							if (const_int==NULL){
+							DFG_ERR("The Inst's const is not Int, not support yet!\n"<<changeIns2Str(curII));
+							}
+							string name;
+							raw_string_ostream stream(name);
+							stream << *const_int;
+							DFGNodeConst* constNode;
+							constNode = new DFGNodeConst(nodeID++,const_data,stream.str());
+							m_ConstNodes.push_back(constNode);
+            	DFGEdge* dfgEdge;
+               dfgEdge = new DFGEdge(dfgEdgeID++, constNode, nodeInst);
+               m_DFGEdges.push_back(dfgEdge);
               nodeInst->addConst();
-							//outs() << C->getSExtValue() << "\n";
-							//outs()<< *curII <<"\n";
           } 
 					//if the operand is a param
-					else{
-							//outs()<<"is a param"<<"\n";
-							//outs()<<*curII<<"\n";
+					else if (Argument* arg = dyn_cast<Argument>(op)){
+							string name;
+							raw_string_ostream stream(name);
+							stream << *arg;
+							DFGNodeParam* paramNode;
+							paramNode = new DFGNodeParam(nodeID++,arg,stream.str());
+							m_ParamNodes.push_back(paramNode);
+            	DFGEdge* dfgEdge;
+               dfgEdge = new DFGEdge(dfgEdgeID++, paramNode, nodeInst);
+               m_DFGEdges.push_back(dfgEdge);
               nodeInst->addConst();
 					
 					}
+					else{
+							DFG_ERR("The Inst have unknow operand!\n"<<changeIns2Str(curII));
+					}
         }
-    }
 					}
 
   connectDFGNodes();
@@ -158,18 +173,23 @@ void DFG::generateDot(Function &t_F, bool t_isTrimmedDemo) {
 
   file << "digraph \"DFG for'"  << t_F.getName() << "\' function\" {\n";
 
-  //Dump DFG nodes.
-  for (DFGNode* node: nodes) {
-		if(NodeIsInst(node)){
-//    if (dyn_cast<Instruction>((*node)->getInst())) {
-      file << "\tNode" << node->getID() << node->getName() << "[shape=record, label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
+  //Dump InstDFG nodes.
+  for (DFGNodeInst* node: m_InstNodes) {
+      file << "\tNode" << node->getID() << "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
 		}
-  }
+  //Dump ConstDFG nodes.
+  for (DFGNodeConst* node: m_ConstNodes) {
+      file << "\tNode" << node->getID() <<  "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
+		}
+  //Dump ParamDFG nodes.
+  for (DFGNodeParam* node: m_ParamNodes) {
+      file << "\tNode" << node->getID() <<  "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
+		}
   // Dump data flow.
-  file << "edge [color=red]" << "\n";
+  file << "edge [color="<< m_DFGEdges.front()->color<<"]" << "\n";
   for (DFGEdge* edge: m_DFGEdges) {
     // Distinguish data and control flows. Make ctrl flow invisible.
-        file << "\tNode" << edge->getSrc()->getID() << edge->getSrc()->getName() << " -> Node" << edge->getDst()->getID() << edge->getDst()->getName() << "\n";
+        file << "\tNode" << edge->getSrc()->getID() << " -> Node" << edge->getDst()->getID() << "\n";
   }
   file << "}\n";
   file.close();
@@ -181,24 +201,21 @@ void DFG::showOpcodeDistribution() {
 	OUTS("==================================",ANSI_FG_CYAN); 
   OUTS("[show opcode count]",ANSI_FG_CYAN);
   map<string, int> opcodeMap;
-  for (DFGNode* node: nodes) {
-    opcodeMap[node->getName()] += 1;
+  for (DFGNodeInst* node: m_InstNodes) {
+    opcodeMap[node->getOpcodeName()] += 1;
   }
   for (map<string, int>::iterator opcodeItr=opcodeMap.begin();
       opcodeItr!=opcodeMap.end(); ++opcodeItr) {
     outs()<< (*opcodeItr).first << " : " << (*opcodeItr).second << "\n";
   }
-  outs()<< "DFG node count: "<<nodes.size()<<"; DFG edge count: "<<m_DFGEdges.size()<<";\n";
+  outs()<< "Inst DFG node count: "<<m_InstNodes.size()<<";\n";
+  outs()<< "Const DFG node count: "<<m_ConstNodes.size()<<";\n";
+  outs()<< "Param DFG node count: "<<m_ParamNodes.size()<<";\n";
+	outs()<< "DFG edge count: "<<m_DFGEdges.size()<<";\n";
 }
 
-bool DFG::NodeIsInst(DFGNode*node){
-if(dynamic_cast<DFGNodeInst*>(node)){
-				return true;
-}
-return false;
-}
-DFGNodeInst* DFG::getNode(Value* t_value) {
-  for (DFGNode* node: nodes) {
+DFGNodeInst* DFG::getInstNode(Value* t_value) {
+  for (DFGNode* node: m_InstNodes) {
 					DFGNodeInst* nodeInst = dynamic_cast<DFGNodeInst*>(node);
 					if(nodeInst&&nodeInst->getInst() == t_value){
       return nodeInst;
@@ -233,6 +250,6 @@ bool DFG::hasDFGEdge(DFGNode* t_src, DFGNode* t_dst) {
 string DFG::changeIns2Str(Instruction* t_ins) {
   string temp_str;
   raw_string_ostream os(temp_str);
-  t_ins->print(os);
+  os << *t_ins;
   return os.str();
 }

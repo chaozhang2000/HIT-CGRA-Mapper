@@ -38,7 +38,7 @@ config CC_OPT
   default "none"
 
 config CC_DEBUG
-  bool "Enable debug information"
+  bool "Enable gdb information"
   default n
 endmenu
 
@@ -48,4 +48,11 @@ menu "Debugging"
 config DFG_DEBUG
   bool "Enable DFG debug print"
   default y
+endmenu
+
+menu "DFG config"
+
+config DFG_FULL_INST 
+  bool "show the full Inst in DFG"
+  default n
 endmenu

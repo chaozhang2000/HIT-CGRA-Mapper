@@ -9,15 +9,11 @@
 
 #include <string>
 #include <list>
-#include <stdio.h>
-#include <iostream>
-
-#include "DFGEdge.h"
-
+#include <llvm/Support/FileSystem.h>
 using namespace std;
 
-class DFGEdge;
 
+class DFGEdge;
 class DFGNode {
   private:
     int m_id;

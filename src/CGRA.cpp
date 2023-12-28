@@ -90,3 +90,14 @@ CGRA::CGRA(int t_rows,int t_columns){
 	}
 #endif
 }
+
+CGRA::~CGRA(){
+	for (int i=0; i<m_LinkCount;i++){
+					delete links[i];
+	}
+  for (int i=0; i<m_rows; ++i) {
+    for (int j=0; j<m_columns; ++j) {
+			delete nodes[i][j];
+		}
+	}
+}

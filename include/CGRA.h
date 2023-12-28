@@ -26,6 +26,7 @@ class CGRA {
 		/**The constructor function of class CGRA
 		 */
 		CGRA(int t_rows,int t_columns);
+		~CGRA();
     CGRANode ***nodes;
     CGRALink **links;
 };

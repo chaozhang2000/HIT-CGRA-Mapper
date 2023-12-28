@@ -1,13 +1,3 @@
-/*
- * ======================================================================
- * DFGEdge.h
- * ======================================================================
- * DFG edge implementation header file.
- *
- * Author : Cheng Tan
- *   Date : July 19, 2019
- */
-
 #ifndef DFGEdge_H
 #define DFGEdge_H
 

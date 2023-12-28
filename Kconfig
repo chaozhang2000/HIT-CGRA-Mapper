@@ -48,6 +48,9 @@ menu "Debugging"
 config DFG_DEBUG
   bool "Enable DFG debug print"
   default y
+config CGRA_DEBUG
+  bool "Enable CGRA debug print"
+  default y
 endmenu
 
 menu "DFG config"

@@ -40,5 +40,11 @@ class CGRANode {
 		 * @param t_link : the pointer of the out CGRALink
 		 */
 		void attachOutLink(CGRALink* t_link);
+
+
+		int getID(){return m_id;};
+		int getx(){return m_x;};
+		int gety(){return m_y;};
+		bool hasDataMem(){return m_hasDataMem;};
 };
 #endif

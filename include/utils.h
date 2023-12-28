@@ -38,6 +38,8 @@
 
 #define ANSI_FMT(str, fmt) fmt str ANSI_NONE
 
+#include <llvm/Support/raw_ostream.h>
+
 #define ERRS(coutfmt,color) errs()<<color<<coutfmt<<ANSI_NONE<<"\n"
 #define OUTS(coutfmt,color) outs()<<color<<coutfmt<<ANSI_NONE<<"\n"
 

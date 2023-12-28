@@ -28,5 +28,9 @@ class CGRALink
 		 * @param t_dst : the pointer to the dst CGRAnode
 		 */
 		void connect(CGRANode* t_src, CGRANode* t_dst);
+
+		int getID(){return m_id;}
+		CGRANode* getsrc(){return m_src;}
+		CGRANode* getdst(){return m_dst;}
 };
 #endif

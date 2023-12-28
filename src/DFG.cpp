@@ -1,5 +1,4 @@
 #include "DFG.h"
-#include <llvm/Support/FileSystem.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <fstream>
 #include "common.h"
@@ -76,6 +75,7 @@ void DFG::construct(Function& t_F) {
 
 	// Construct dfg nodes
 #ifdef CONFIG_DFG_DEBUG 
+	OUTS("\nDFG DEBUG",ANSI_FG_BLUE); 
 	OUTS("==================================",ANSI_FG_CYAN); 
   OUTS("[constructing DFG of target function: "<< t_F.getName().str()<<"]",ANSI_FG_CYAN);
 #endif

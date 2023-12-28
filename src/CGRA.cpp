@@ -1,11 +1,13 @@
 #include "CGRA.h"
+#include "common.h"
 
+using namespace llvm;
+using namespace std;
 /**
  * What is in this Function:
  * 1. init some var,like m_rows、m_columns、m_FUCount and so on.
- * 2. Depending on whether parameter a is true or false, decide whether to use paramCGRA.json or default parameters to initialize CGRA.
- * 3. init the CGRANode and CGRALink according to paramCGRA.json or default value.
- * 4. connect the CGRANode and CGRALink to Generate the CGRA.
+ * 2. init the CGRANode and CGRALink according to default value.
+ * 3. connect the CGRANode and CGRALink to Generate the CGRA.
  */
 CGRA::CGRA(int t_rows,int t_columns){
 	
@@ -64,4 +66,27 @@ CGRA::CGRA(int t_rows,int t_columns){
 			}
     }
   }
+#ifdef CONFIG_CGRA_DEBUG
+	//dump CGRA
+  OUTS("\nCGRA DEBUG",ANSI_FG_BLUE);
+	OUTS("==================================",ANSI_FG_CYAN); 
+  OUTS("[CGRA Node and links count]",ANSI_FG_CYAN);
+	outs()<<"CGRArows:"<<m_rows<<"\n";
+	outs()<<"CGRAcolumns:"<<m_columns<<"\n";
+	outs()<<"CGRANode:"<<m_FUCount<<"\n";
+	outs()<<"CGRALink:"<<m_LinkCount<<"\n";
+
+	OUTS("==================================",ANSI_FG_CYAN); 
+  OUTS("[CGRA Node and links information]",ANSI_FG_CYAN);
+  for (int i=0; i<m_rows; ++i) {
+    for (int j=0; j<m_columns; ++j) {
+			outs()<< "Node("<<nodes[i][j]->getx()<<","<<nodes[i][j]->gety()<<"); ";
+			outs()<< "ID:"<<nodes[i][j]->getID()<<"; ";
+			outs()<< "hasDataMem:"<<nodes[i][j]->hasDataMem()<<"\n";
+    }
+  }
+	for (int i=0; i<m_LinkCount;i++){
+		outs()<<"Link"<<links[i]->getID()<<":from Node"<<links[i]->getsrc()->getID()<<"->Node"<<links[i]->getdst()->getID()<<"\n";
+	}
+#endif
 }

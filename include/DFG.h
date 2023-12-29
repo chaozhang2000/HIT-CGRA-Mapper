@@ -1,10 +1,3 @@
-/**
- * @file DFG.h
- * @author Cheng Tan 
- * @brief  the defination of DFG class
- * @version 0.1
- */
-
 #include <list>
 #include "DFGNodeInst.h"
 #include "DFGEdge.h"

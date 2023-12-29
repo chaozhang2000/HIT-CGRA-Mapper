@@ -6,6 +6,8 @@
 #include "json.h"
 #include "DFG.h"
 #include "common.h"
+#include "CGRA.h"
+#include "MRRG.h"
 
 using namespace llvm;
 using namespace std;
@@ -66,8 +68,13 @@ namespace {
 			bool isTrimmedDemo = true;
       dfg->generateDot(t_F, isTrimmedDemo);
 
-			delete dfg;
+			CGRA* cgra = new CGRA(4,4);
 
+			MRRG* mrrg = new MRRG(cgra,1);
+
+			delete dfg;
+			delete cgra;
+			delete mrrg;
 			return true;
     }
 

@@ -100,4 +100,9 @@ CGRA::~CGRA(){
 			delete nodes[i][j];
 		}
 	}
+	for (int i=0;i<m_rows;i++){
+		delete[] nodes[i];
+	}
+	delete[] nodes;
+	delete[] links;
 }

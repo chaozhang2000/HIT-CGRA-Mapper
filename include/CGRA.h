@@ -22,12 +22,15 @@ class CGRA {
     int m_columns;
 
   public:
-		
+    CGRANode ***nodes;
+    CGRALink **links;
 		/**The constructor function of class CGRA
 		 */
 		CGRA(int t_rows,int t_columns);
 		~CGRA();
-    CGRANode ***nodes;
-    CGRALink **links;
+		int getNodeCount(){return m_FUCount;}
+		int getLinkCount(){return m_LinkCount;}
+		int getrows(){return m_rows;}
+		int getcolumns(){return m_columns;}
 };
 #endif

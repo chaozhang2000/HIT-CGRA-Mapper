@@ -15,6 +15,7 @@ class CGRALink
 		/**record the pointer of dst CGRANode
 		 */
     CGRANode *m_dst;
+
 		
   public:
 		/**The constructor function of class CGRALink

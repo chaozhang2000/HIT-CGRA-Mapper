@@ -2,6 +2,7 @@
 #define CGRANode_H
 
 #include <list>
+#include "DFGNodeInst.h"
 using namespace std;
 class CGRALink;
 class CGRANode {

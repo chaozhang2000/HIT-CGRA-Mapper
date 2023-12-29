@@ -32,10 +32,10 @@ MRRG::~MRRG(){
 	}	
   for (int i=0; i<m_cgra->getrows(); ++i) {
     for (int j=0; j<m_cgra->getcolumns(); ++j) {
-    	m_NodeInfos[m_cgra->nodes[i][j]]=new NodeInfo;
 			delete[] m_NodeInfos[m_cgra->nodes[i][j]]->m_OccupiedByNode;
 			delete[] m_NodeInfos[m_cgra->nodes[i][j]]->m_Src1OccupyState;
 			delete[] m_NodeInfos[m_cgra->nodes[i][j]]->m_Src2OccupyState;
+    	delete m_NodeInfos[m_cgra->nodes[i][j]];
     }
   }
 }

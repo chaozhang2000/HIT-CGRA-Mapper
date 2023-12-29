@@ -72,9 +72,9 @@ namespace {
 
 			MRRG* mrrg = new MRRG(cgra,1);
 
+			delete mrrg;
 			delete dfg;
 			delete cgra;
-			delete mrrg;
 			return true;
     }
 

@@ -3,6 +3,7 @@
 
 #include <llvm/Support/FileSystem.h>
 #include "DFGNode.h"
+#include <string>
 
 class DFGEdge
 {
@@ -17,9 +18,9 @@ class DFGEdge
 		 */
     DFGNode *m_dst;
 
-  public:
+		string m_color;
 
-		static const string color;
+  public:
 
 		/**The constructor function of class DFGEdge
 		 * assign value to m_id,m_src and m_dst to create a Edge from src DFGNode to dst DFGNode
@@ -32,6 +33,8 @@ class DFGEdge
     DFGNode* getSrc();
     DFGNode* getDst();
     void connect(DFGNode*, DFGNode*);
+		void setcolor(string t_color);
+		string getcolor();
 };
 
 #endif

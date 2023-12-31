@@ -56,6 +56,12 @@ endmenu
 menu "DFG config"
 
 config DFG_FULL_INST 
-  bool "show the full Inst in DFG"
+  bool "Show the full Inst in DFG"
   default n
+config DFG_LEVEL
+	bool "Show node's level in DFG"
+	default y
+config DFG_LONGEST
+	bool "Show the longest path in DFG "
+	default y
 endmenu

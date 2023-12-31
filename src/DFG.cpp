@@ -2,6 +2,10 @@
 #include <llvm/Analysis/LoopInfo.h>
 #include <fstream>
 #include "common.h"
+#include <limits>
+#include <cassert>
+
+using namespace std;
 /**
  * How this function is implemented:
  * 1. init some var
@@ -9,7 +13,6 @@
  */
 DFG::DFG(Function& t_F) {
 	DFG_error = false;
-  m_num = 0;
   construct(t_F);
 }
 
@@ -125,7 +128,6 @@ void DFG::construct(Function& t_F) {
             	DFGEdge* dfgEdge;
                dfgEdge = new DFGEdge(dfgEdgeID++, constNode, nodeInst);
                m_DFGEdges.push_back(dfgEdge);
-              nodeInst->addConst();
           } 
 					//if the operand is a param
 					else if (Argument* arg = dyn_cast<Argument>(op)){
@@ -138,8 +140,6 @@ void DFG::construct(Function& t_F) {
             	DFGEdge* dfgEdge;
                dfgEdge = new DFGEdge(dfgEdgeID++, paramNode, nodeInst);
                m_DFGEdges.push_back(dfgEdge);
-              nodeInst->addConst();
-					
 					}
 					else{
 							DFG_ERR("The Inst have unknow operand!\n"<<changeIns2Str(curII));
@@ -148,6 +148,225 @@ void DFG::construct(Function& t_F) {
 					}
 
   connectDFGNodes();
+	reorderInstNodes();
+}
+
+void DFG::reorderInstNodes(){
+	list<DFGNodeInst*> longestPath;
+	// find the longest path in dfg
+	DFS_findlongest(&longestPath);
+#ifdef CONFIG_DFG_DEBUG 
+	OUTS("==================================",ANSI_FG_CYAN); 
+  OUTS("[Reorder Inst Nodes]",ANSI_FG_CYAN);
+	outs()<<"longestPath: ";
+	for(DFGNodeInst* InstNode:longestPath){
+		outs()<<"Node"<<InstNode->getID()<<" -> ";
+	}
+	outs()<<"end\n";
+#endif
+#ifdef CONFIG_DFG_LONGEST
+	changeLongestPathColor(&longestPath,"orange");
+#endif
+
+	set<DFGNodeInst*> havenotSetLevelNodes;
+	int maxlevel = 0;
+	//set level for nodes in longestPath
+	maxlevel =setLevelLongestPath(&longestPath,&havenotSetLevelNodes) ;
+
+	//set level for other node
+	setLevelforOtherNodes(&havenotSetLevelNodes);
+	//reorder the InstNode in DFG
+	list<DFGNodeInst*> temp;
+	for(int i = 0;i<=maxlevel;i++){
+		for(DFGNodeInst* InstNode: m_InstNodes){
+			if(InstNode->getLevel() == i){
+				temp.push_back(InstNode);
+			}
+		}
+	}
+	m_InstNodes.clear();
+	for(DFGNodeInst* InstNode: temp){
+		m_InstNodes.push_back(InstNode);
+#ifdef CONFIG_DFG_DEBUG 
+		outs()<<"Node"<<InstNode->getID()<<" "<<" level: "<< InstNode->getLevel()<<*(InstNode->getInst())<<"\n";
+#endif
+	}
+}
+
+DFGEdge* DFG::getEdgefrom(DFGNodeInst* t_src,DFGNodeInst* t_dst){
+	for(DFGEdge* edge: m_DFGEdges){
+		if(dynamic_cast<DFGNodeInst*>(edge->getSrc()) == t_src and dynamic_cast<DFGNodeInst*>(edge->getDst())== t_dst){
+			return edge;
+		}
+	}
+	assert("ERROR cannot find the DFGEdge from src to dst");
+	return NULL;
+}
+
+/** set Level for the InstNode on the longest Path in DFG,and erase them from havenotSetLevelNodes list
+*/
+int DFG::setLevelLongestPath(list<DFGNodeInst*>*longestPath,set<DFGNodeInst*>* havenotSetLevelNodes){
+	int level = 0;
+	for(DFGNodeInst* InstNode: m_InstNodes){
+					havenotSetLevelNodes->insert(InstNode);
+	}
+	// set level for node in the longest path
+	for(DFGNodeInst* InstNode: *longestPath){
+		InstNode -> setLevel(level);
+		havenotSetLevelNodes->erase(InstNode);
+		level ++;
+	}
+	return level;
+}
+
+/** set Level for the InstNode not on the longest Path in DFG,and erase them from havenotSetLevelNodes list
+ * 1.search all nodes which have not been set level,and get four kinds of nodes,(1)nodes where all succnodes have level.(2)nodes where all prednodes have level.(3)node has highest proportion of succnodes which has been set(4)node has highest proportion of prednodes which has been set
+ * 2.set level for (1)nodes,then search all nodes to get four kinds of nodes again.if kind (1) nodes not exsist,then set level for kind(2) nodes,and so on.
+*/
+void DFG::setLevelforOtherNodes(set<DFGNodeInst*>* havenotSetLevelNodes){
+		DFGNodeInst* mostSuccNodeHasLevel;
+		DFGNodeInst* mostPredNodeHasLevel;
+		set<DFGNodeInst*> allSuccNodeHasLevel;
+		set<DFGNodeInst*> allPredNodeHasLevel;
+		float succNodeHasLevelPercent=0;
+		float predNodeHasLevelPercent=0;
+	while(havenotSetLevelNodes->size() > 0){
+		allSuccNodeHasLevel.clear();
+		allPredNodeHasLevel.clear();
+		mostSuccNodeHasLevel = NULL;
+		mostSuccNodeHasLevel = NULL;
+		succNodeHasLevelPercent = 0;
+		predNodeHasLevelPercent = 0;
+		//find four kinds InstNodes
+		for(DFGNodeInst* InstNode:*havenotSetLevelNodes){
+						bool flag = true;
+						int succnotfindcnt = 0;
+						for(DFGNodeInst* succNode:*(InstNode->getSuccInstNodes())){
+							if(havenotSetLevelNodes->find(succNode) != havenotSetLevelNodes->end()){
+											flag = false;
+											succnotfindcnt ++;
+							}
+						}
+						if(flag == true)allSuccNodeHasLevel.insert(InstNode);
+						if(succNodeHasLevelPercent < (InstNode->getSuccInstNodes()->size()==0)?0:1-((float)succnotfindcnt)/((float)(InstNode->getSuccInstNodes()->size()))){
+							succNodeHasLevelPercent = (InstNode->getSuccInstNodes()->size()==0)?0:1-((float)succnotfindcnt)/((float)(InstNode->getSuccInstNodes()->size()));
+							mostSuccNodeHasLevel = InstNode;
+						}
+						
+
+						flag = true;
+						int prednotfindcnt = 0;
+						for(DFGNodeInst* predNode:*(InstNode->getPredInstNodes())){
+							if(havenotSetLevelNodes->find(predNode) != havenotSetLevelNodes->end()){
+											flag = false;
+											prednotfindcnt ++;					
+							}
+						}
+						if(flag == true)allPredNodeHasLevel.insert(InstNode);
+						if(predNodeHasLevelPercent < (InstNode->getPredInstNodes()->size()==0)?0:1-((float)prednotfindcnt)/((float)(InstNode->getPredInstNodes()->size()))){
+							predNodeHasLevelPercent = (InstNode->getPredInstNodes()->size()==0)?0:1-((float)prednotfindcnt)/((float)(InstNode->getPredInstNodes()->size()));
+							mostPredNodeHasLevel = InstNode;
+						}
+		}
+		//give kind(1) nodes level
+		if(allSuccNodeHasLevel.size() > 0){
+						for(DFGNodeInst* InstNode:allSuccNodeHasLevel){
+							int level = numeric_limits<int>::max();	
+							for(DFGNodeInst* succNode:*(InstNode->getSuccInstNodes())){
+								if(level > succNode->getLevel()-1) level = succNode->getLevel() - 1;
+							}
+							InstNode->setLevel(level);
+							havenotSetLevelNodes->erase(InstNode);
+						}
+			continue;
+		//give kind(2) nodes level
+		}else if (allPredNodeHasLevel.size()>0){
+						for(DFGNodeInst* InstNode:allPredNodeHasLevel){
+							int level = 0;	
+							for(DFGNodeInst* predNode:*(InstNode->getPredInstNodes())){
+								if(level < predNode->getLevel()+1) level = predNode->getLevel() + 1;
+							}
+							InstNode->setLevel(level);
+							havenotSetLevelNodes->erase(InstNode);
+						}
+			continue;
+		//give kind(3) node level
+		}else if(mostSuccNodeHasLevel !=NULL){
+							int level = numeric_limits<int>::max();	
+							for(DFGNodeInst* succNode:*(mostSuccNodeHasLevel->getSuccInstNodes())){
+								if(level > succNode->getLevel()-1 and succNode->haveSetLevel()) level = succNode->getLevel() - 1;
+							}
+							mostPredNodeHasLevel->setLevel(level);
+							havenotSetLevelNodes->erase(mostPredNodeHasLevel);
+			continue;
+		//give kind(4) node level
+		}else if(mostPredNodeHasLevel !=NULL){
+							int level = 0;
+							for(DFGNodeInst* predNode:*(mostPredNodeHasLevel->getPredInstNodes())){
+								if(level < predNode->getLevel()+1) level = predNode->getLevel() + 1;
+							}
+							mostPredNodeHasLevel->setLevel(level);
+							havenotSetLevelNodes->erase(mostPredNodeHasLevel);
+			continue;
+		}else{
+						assert("ERROR has DFGNode which do not have INEdge and OutEdge");
+			continue;
+		}
+	}
+}
+
+/** change the DFGEdge's color in Longest Path in DFG
+*/
+void DFG::changeLongestPathColor(list<DFGNodeInst*>* t_longestPath,string t_color){
+	list<DFGNodeInst*>::iterator itr = t_longestPath->begin();
+	DFGNodeInst* src = *itr;
+	DFGNodeInst* dst = NULL;
+	DFGEdge* edge = NULL;
+	for(auto it=next(itr);it != t_longestPath->end();++it){
+					dst = *it;
+					edge = getEdgefrom(src,dst);
+					edge->setcolor(t_color);
+					src = *it;
+	}
+}
+ /** 
+	* get longest Path in DFG.
+	* what is in his function
+	* Traverse all nodes, treat each node as the initial node, and use DFS to find the longest path from the starting node in DFG. Save the longest path starting from different starting nodes.
+	*
+ */
+void DFG::DFS_findlongest(list<DFGNodeInst*>* t_longestPath){
+	list<DFGNodeInst*> currentPath;
+	set <DFGNodeInst*> visited;
+	for(DFGNodeInst* InstNode:m_InstNodes){
+		currentPath.clear();
+		visited.clear();
+		reorderDFS(&visited,t_longestPath,&currentPath,InstNode);
+	}
+}
+
+ /** 
+	* get longest Path in DFG from start node.
+	* use DFS to find the longest path from the starting node in DFG.
+	* DFS(Depth-First Search) algorithm is an algorithm used to traverse or search for data in graphs. It starts from the starting node and follows a path as deep as possible into each previously unreachable node in the graph until it reaches the deepest node. Then, go back to the previous node and continue exploring other branches until all nodes are accessed.
+ */
+void DFG::reorderDFS(set<DFGNodeInst*>* t_visited, list<DFGNodeInst*>* t_targetPath,
+								list<DFGNodeInst*>* t_curPath, DFGNodeInst* targetInstNode){
+	t_visited->insert(targetInstNode);	
+	t_curPath->push_back(targetInstNode);
+	if(t_curPath->size() > t_targetPath->size()){
+		t_targetPath->clear();
+		for(DFGNodeInst* InstNode: *t_curPath){
+			t_targetPath->push_back(InstNode);
+		}
+	}
+	for(DFGNodeInst* succNode: *(targetInstNode->getSuccInstNodes())){
+		if(t_visited->find(succNode) == t_visited->end()){
+			reorderDFS(t_visited,t_targetPath,t_curPath,succNode);
+			t_visited->erase(succNode);
+			t_curPath->pop_back();
+		}
+	}
 }
 
  /** 
@@ -175,7 +394,11 @@ void DFG::generateDot(Function &t_F, bool t_isTrimmedDemo) {
 
   //Dump InstDFG nodes.
   for (DFGNodeInst* node: m_InstNodes) {
-      file << "\tNode" << node->getID() << "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
+      file << "\tNode" << node->getID() << "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName();
+#ifdef CONFIG_DFG_LEVEL
+			file << " level="<<node->getLevel();
+#endif
+		 file	<< "\"];\n";
 		}
   //Dump ConstDFG nodes.
   for (DFGNodeConst* node: m_ConstNodes) {
@@ -186,10 +409,9 @@ void DFG::generateDot(Function &t_F, bool t_isTrimmedDemo) {
       file << "\tNode" << node->getID() <<  "[shape=record,"<<"color="<<node->color<<",label=\"" << "(" << node->getID() << ") " << node->getName() << "\"];\n";
 		}
   // Dump data flow.
-  file << "edge [color="<< m_DFGEdges.front()->color<<"]" << "\n";
   for (DFGEdge* edge: m_DFGEdges) {
     // Distinguish data and control flows. Make ctrl flow invisible.
-        file << "\tNode" << edge->getSrc()->getID() << " -> Node" << edge->getDst()->getID() << "\n";
+        file << "\tNode" << edge->getSrc()->getID() << " -> Node" << edge->getDst()->getID() << " [color="<< edge->getcolor()<<"]" << "\n";
   }
   file << "}\n";
   file.close();
@@ -252,4 +474,8 @@ string DFG::changeIns2Str(Instruction* t_ins) {
   raw_string_ostream os(temp_str);
   os << *t_ins;
   return os.str();
+}
+
+int DFG::getInstNodeCount(){
+	return m_InstNodes.size();
 }

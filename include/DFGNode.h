@@ -1,9 +1,3 @@
-/**
- * @file DFGNode.h
- * @author Cheng Tan 
- * @brief  the defination of DFGNode class
- * @version 0.1
- */
 #ifndef DFGNode_H
 #define DFGNode_H
 
@@ -42,5 +36,8 @@ class DFGNode {
 		 *  @param t_dfgEdge : the pointer of DFGEdge to be added to the m_outEdges
 		 */
     void setOutEdge(DFGEdge* t_dfgEdge);
+
+		list<DFGEdge*>* getInEdges(){return &m_inEdges;};
+		list<DFGEdge*>* getOutEdges(){return &m_outEdges;};
 };
 #endif

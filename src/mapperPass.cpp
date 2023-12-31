@@ -8,6 +8,7 @@
 #include "common.h"
 #include "CGRA.h"
 #include "MRRG.h"
+#include "Mapper.h"
 
 using namespace llvm;
 using namespace std;
@@ -72,6 +73,9 @@ namespace {
 
 			MRRG* mrrg = new MRRG(cgra,1);
 
+			Mapper* mapper = new Mapper(dfg,cgra,mrrg);
+
+			delete mapper;
 			delete mrrg;
 			delete dfg;
 			delete cgra;

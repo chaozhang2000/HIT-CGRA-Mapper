@@ -8,11 +8,23 @@ using namespace std;
 
 class DFGNodeInst:public DFGNode{
 	private:
-		Instruction* m_inst;
-		string m_opcodeName;	
-		/**this variable is used to record how many const there are in the operands of the current DFG node
+		/**var to save the inst 
 		 */
-    int m_numConst;
+		Instruction* m_inst;
+		/**var to save the opcode name of inst
+		 */
+		string m_opcodeName;	
+		/**list to save the succInstNode
+		 */
+		list<DFGNodeInst*>* m_succInstNodes;
+		/**list to save the succInstNode
+		 */
+		list<DFGNodeInst*>* m_predInstNodes;
+		/**var to save the level of InstNode in DFG,the level will be given when reorder the DFG
+		 * the dfgnode with lower level execute first
+		 */
+		int m_level;
+		bool m_haveSetLevel;
 	public:
 		static const string color;
 		/**The constructor function of class DFGNodeInst
@@ -20,7 +32,7 @@ class DFGNodeInst:public DFGNode{
 		 * @param t_inst :The instruction corresponding to this DFGNodeInst
 		 */
 		DFGNodeInst(int t_id, Instruction* t_inst,string t_name);
-		~DFGNodeInst(){};
+		~DFGNodeInst();
 
     Instruction* getInst();
 
@@ -28,9 +40,12 @@ class DFGNodeInst:public DFGNode{
 
 		string getColor();
 
-		/** m_numConst + 1
-		 */
-    void addConst();
-	
+		list<DFGNodeInst*>* getSuccInstNodes();
+		list<DFGNodeInst*>* getPredInstNodes();
+
+		void setLevel(int t_level);
+
+		int getLevel(){return m_level;};
+		bool haveSetLevel(){return m_haveSetLevel;}
 };
 #endif

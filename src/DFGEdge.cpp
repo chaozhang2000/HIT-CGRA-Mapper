@@ -3,11 +3,11 @@
 #include "common.h"
 
 
-const string DFGEdge::color= "black";
 DFGEdge::DFGEdge(int t_id, DFGNode* t_src, DFGNode* t_dst) {
   m_id = t_id;
   m_src = t_src;
   m_dst = t_dst;
+	m_color = "black";
 }
 
 int DFGEdge::getID() {
@@ -25,4 +25,10 @@ DFGNode* DFGEdge::getDst() {
 void DFGEdge::connect(DFGNode* t_src, DFGNode* t_dst) {
   m_src = t_src;
   m_dst = t_dst;
+}
+void DFGEdge::setcolor(string t_color) {
+				m_color = t_color;
+}
+string DFGEdge::getcolor(){
+	return m_color;
 }

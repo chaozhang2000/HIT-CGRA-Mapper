@@ -75,6 +75,8 @@ namespace {
 
 			Mapper* mapper = new Mapper(dfg,cgra,mrrg);
 
+			mrrg->MRRGclear();
+
 			delete mapper;
 			delete mrrg;
 			delete dfg;

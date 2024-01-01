@@ -44,6 +44,8 @@ class MRRG {
 		 */
 		MRRG(CGRA* t_cgra,int m_cycles);
 		~MRRG();
+
+		void MRRGclear();
 };
 #endif
 

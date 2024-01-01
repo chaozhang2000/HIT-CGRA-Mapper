@@ -45,6 +45,8 @@ class MRRG {
 		MRRG(CGRA* t_cgra,int m_cycles);
 		~MRRG();
 
+		/**Clear the MRRG, init datas in it.
+		 */
 		void MRRGclear();
 };
 #endif

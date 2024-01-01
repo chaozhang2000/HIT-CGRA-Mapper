@@ -106,5 +106,7 @@ class DFG {
 		void generateDot(Function &t_F, bool t_isTrimmedDemo);
 
 		int getInstNodeCount();
+    list<DFGNodeInst*>* getInstNodes(){return &m_InstNodes;}
+
 };
 #endif

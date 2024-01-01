@@ -51,6 +51,9 @@ config DFG_DEBUG
 config CGRA_DEBUG
   bool "Enable CGRA debug print"
   default y
+config MAP_DEBUG
+  bool "Enable MAP debug print"
+  default y
 endmenu
 
 menu "DFG config"

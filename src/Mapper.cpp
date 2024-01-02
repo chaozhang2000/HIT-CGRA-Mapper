@@ -61,14 +61,21 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 #endif
 			//create a path
 			map<CGRANode*,int>* path = new map<CGRANode*,int>;
-			bool allPredNodenotMapped = true;
+			//bool allPredNodenotMapped = true;
 			for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
-				if(m_mapInfo[preInstNode]-> mapped == true){
-					allPredNodenotMapped = false;
+				if(m_mapInfo[preInstNode]->mapped == true){
+					if(t_cgraNode->canSupport(t_InstNode->getOpcodeName())){
+						outs()<<t_InstNode->getOpcodeName()<<"is supported\n";
+					}
+				//	allPredNodenotMapped = false;
 				}
 			}
 			return path;
 }
+
+/*void Mapper::Dijkstra_search(map<CGRANode*,int>* path,){
+	;
+}*/
 
 void Mapper::mapInfoInit(){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){

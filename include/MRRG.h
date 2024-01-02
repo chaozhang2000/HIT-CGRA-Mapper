@@ -2,6 +2,7 @@
 #define MRRG_H
 
 #include "CGRA.h"
+#include "DFGNodeInst.h"
 #include <map>
 using namespace std;
 

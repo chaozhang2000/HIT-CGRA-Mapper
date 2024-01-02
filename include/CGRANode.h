@@ -2,7 +2,9 @@
 #define CGRANode_H
 
 #include <list>
-#include "DFGNodeInst.h"
+#include <string>
+#include <set>
+
 using namespace std;
 class CGRALink;
 class CGRANode {
@@ -21,6 +23,10 @@ class CGRANode {
 		/**the list to record output CGRALinks of this CGRANode
 		 */
     list <CGRALink*> m_outLinks;
+
+		/**the list to record all opname that this CGRANode is support
+		 */
+		set<string> m_supportOpts;
 
   public:
 		/**The constructor function of class CGRANode
@@ -47,5 +53,7 @@ class CGRANode {
 		int getx(){return m_x;};
 		int gety(){return m_y;};
 		bool hasDataMem(){return m_hasDataMem;};
+
+		bool canSupport(string t_optsname);
 };
 #endif

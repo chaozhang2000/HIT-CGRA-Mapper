@@ -42,6 +42,11 @@ void Mapper::heuristicMap(){
 	}
 }
 
+/** this function is used to get all possible map paths for a DFGNode.
+ *	it get paths to every CGRANodes, and save pathes in t_paths
+ *	@param t_InstNode: the DFGNode need to be mapped
+ *	@param t_paths: save the pathes
+ */
 void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,int>*>* t_paths){
 #ifdef CONFIG_MAP_DEBUG 
 		outs()<<"Try to find paths for DFGNode"<<t_InstNode->getID()<<" to each CGRANode\n"; 
@@ -55,17 +60,27 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
 	}
 }
 
+/** this function try to get a map path to a certain CGRANode for a DFGNode .
+ *  if t_InstNode has predNodes have been mapped,it will travels all mapped preNodes and try to find a shortest path from the CGRANode which a preNode is mapped,to the CGRANode which t_InstNode want to map to.
+ *	@param t_InstNode: the DFGNode need to be mapped
+ *	@param t_cgraNode: the CGRANode where the DFGNode is hoped to map to
+ *	@return the path
+ */
 map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode){
 #ifdef CONFIG_MAP_DEBUG 
 		outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to "<<"CGRANode" << t_cgraNode->getID()<<"\n"; 
 #endif
-			//create a path
-			map<CGRANode*,int>* path = new map<CGRANode*,int>;
+			map<CGRANode*,int>* path = NULL;
 			//bool allPredNodenotMapped = true;
 			for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
 				if(m_mapInfo[preInstNode]->mapped == true){
 					if(t_cgraNode->canSupport(t_InstNode->getOpcodeName())){
-						outs()<<t_InstNode->getOpcodeName()<<"is supported\n";
+						//create a tmp path,to save the path from the pre cgra node to the t_cgra node
+						//we only need to save the shortest path,delete other temppaths
+						map<CGRANode*,int>* temppath = new map<CGRANode*,int>;
+						Dijkstra_search(temppath,preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
+					}else{
+						;
 					}
 				//	allPredNodenotMapped = false;
 				}
@@ -73,15 +88,58 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			return path;
 }
 
-/*void Mapper::Dijkstra_search(map<CGRANode*,int>* path,){
-	;
-}*/
+/** this function try to find a paths to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.
+ */
+void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
+	list<CGRANode*> searchPool;
+	map<CGRANode*,int> distance;//used to save the distance from t_srcCGRANode to a CGRANode on path
+	map<CGRANode*,int> timing;//used to save the clock cycle when arrive a CGRANode on path
+	map<CGRANode*,CGRANode*> previous;//used to save the predCGRANode on Path
+	for(int r=0;r<m_cgra->getrows();r++){
+		for(int c = 0;c<m_cgra->getcolumns();c++){
+			CGRANode* node = m_cgra->nodes[r][c];
+			distance[node] = m_mrrg->getMRRGcycles();
+			timing[node] = m_mapInfo[t_srcDFGNode]->cycle;
+			previous[node] = NULL;
+			searchPool.push_back(node);
+		}
+	}
+	distance[t_srcCGRANode] = 0;
+
+	while (searchPool.size() != 0){
+		int mindistance = m_mrrg->getMRRGcycles() + 1;
+		CGRANode* mindisCGRANode;
+		for(CGRANode* node:searchPool){
+			if(distance[node] < mindistance){
+				mindistance = distance[node];
+				mindisCGRANode = node;
+			}
+		}
+		searchPool.remove(mindisCGRANode);
+		//found the target point
+		if(mindisCGRANode == t_dstCGRANode){
+			timing[t_dstCGRANode] = //!!!!!!TODO
+			break;
+		}
+		list<CGRANode*>* NeighborCGRANodes = mindisCGRANode->getNeighbors();
+		for(CGRANode* neighbor: *NeighborCGRANodes){
+			int cycle = timing[mindisCGRANode];
+			while(1){
+				CGRALink* currentLink = mindisCGRANode->getOutLinkto(neighbor);
+				if(LinkcanOccupy(currentLink,cycle)){//TODO
+
+				}
+			}
+			
+		}
+	}
+}
 
 void Mapper::mapInfoInit(){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){
-		m_mapInfo[InstNode]->cgra = NULL;
+		m_mapInfo[InstNode]->cgraNode = NULL;
 		m_mapInfo[InstNode]->cycle = 0;
-		m_mapInfo[InstNode]->mapped = false;
+		m_mapInfo[InstNode]->mapped = true;
 	}
 }
 

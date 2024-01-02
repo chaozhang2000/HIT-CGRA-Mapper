@@ -49,6 +49,8 @@ class MRRG {
 		/**Clear the MRRG, init datas in it.
 		 */
 		void MRRGclear();
+
+		int getMRRGcycles(){return m_cycles;}
 };
 #endif
 

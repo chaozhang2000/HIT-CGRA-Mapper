@@ -58,6 +58,7 @@ class CGRANode {
 		int getx(){return m_x;};
 		int gety(){return m_y;};
 		bool hasDataMem(){return m_hasDataMem;};
+		bool isdisable(){return m_disabled;};
 
 		/**judge if this CGRANode can support Opt which opcodeName is t_optsname
 		 * @param t_optsname: the name of the Opt

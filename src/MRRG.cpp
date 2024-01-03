@@ -65,3 +65,11 @@ bool MRRG::canOccupyLink(CGRALink* t_cgraLink,int t_cycle,int t_II){
 	}
 	return true;
 }
+
+bool MRRG::canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II){
+	for(int c=t_cycle;c<m_cycles;c=c+t_II){
+		if(m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] != NULL)
+						return false;
+	}
+	return true;
+}

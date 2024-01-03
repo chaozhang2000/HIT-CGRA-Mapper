@@ -54,8 +54,10 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
 	for(int r = 0; r< m_cgra->getrows();r++){
 		for(int c = 0; c< m_cgra->getcolumns();c++){
 			CGRANode* cgraNode = m_cgra->nodes[r][c];
-			map<CGRANode*,int>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
-			t_paths->push_back(path);
+			if(cgraNode->canSupport(t_InstNode->getOpcodeName()) and cgraNode->isdisable()==false){
+				map<CGRANode*,int>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
+				t_paths->push_back(path);
+			}
 		}
 	}
 }
@@ -71,27 +73,22 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 		outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to "<<"CGRANode" << t_cgraNode->getID()<<"\n"; 
 #endif
 			map<CGRANode*,int>* path = NULL;
-			//bool allPredNodenotMapped = true;
+			bool allPredNodenotMapped = true;
 			for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
 				if(m_mapInfo[preInstNode]->mapped == true){
-					if(t_cgraNode->canSupport(t_InstNode->getOpcodeName())){
-						//create a tmp path,to save the path from the pre cgra node to the t_cgra node
-						//we only need to save the shortest path,delete other temppaths
-						map<CGRANode*,int>* temppath = new map<CGRANode*,int>;
-						Dijkstra_search(temppath,preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
-					}else{
-						;
-					}
-				//	allPredNodenotMapped = false;
+					allPredNodenotMapped = false;
+					//create a tmp path,to save the path from the pre cgra node to the t_cgra node
+					//we only need to save the shortest path,delete other temppaths
+					map<CGRANode*,int>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
 				}
 			}
 			return path;
 }
 
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
- * use dijkstara search to find this path,if find this path, save it in t_path
+ * use dijkstara search to find this path,if find this path,return path,else return NULL
  */
-void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
+map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
 	list<CGRANode*> searchPool;
 	map<CGRANode*,int> distance;//used to save the distance from t_srcCGRANode to a CGRANode on path
 	map<CGRANode*,int> timing;//used to save the clock cycle when arrive a CGRANode on path
@@ -123,8 +120,15 @@ void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNod
 		searchPool.remove(mindisCGRANode);
 
 		if(mindisCGRANode == t_dstCGRANode){//find the target CGRANode,exit searching
-			timing[t_dstCGRANode] = //!!!!!!TODO
-			successFindPath  = true;
+			int time = timing[t_dstCGRANode];
+			while(time < m_mrrg->getMRRGcycles()){
+				if(m_mrrg->canOccupyNode(t_dstCGRANode,time,m_II)==true){
+					successFindPath  = true;//search to the t_dstCGRANode and the t_dstCGRANode can be occupy,mean find path successfully.
+					break;
+				}
+				time++;
+			}
+			timing[t_dstCGRANode] = time;
 			break;
 		}
 
@@ -152,13 +156,28 @@ void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNod
 			}
 		}
 	}
+	//if the path is found, add it to path and return path
+	map<CGRANode*,int>* path = NULL;
+	if(successFindPath){
+	 CGRANode* u = t_dstCGRANode;
+	 map<CGRANode*,int> reverseOrderPath;
+	 path =  new map<CGRANode*,int>;
+	 while(u!=NULL){
+	 	reverseOrderPath[u] = timing[u];
+		u = previous[u];
+	 }	 
+	 for(map<CGRANode*,int>::reverse_iterator rit = reverseOrderPath.rbegin();rit != reverseOrderPath.rend();++rit) {
+			(*path)[rit->first]=rit->second;
+	 }
+	}
+	return path;
 }
 
 void Mapper::mapInfoInit(){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){
 		m_mapInfo[InstNode]->cgraNode = NULL;
 		m_mapInfo[InstNode]->cycle = 0;
-		m_mapInfo[InstNode]->mapped = true;
+		m_mapInfo[InstNode]->mapped = false;
 	}
 }
 

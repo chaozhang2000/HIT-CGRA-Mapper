@@ -68,7 +68,12 @@ class MRRG {
 
 		int getMRRGcycles(){return m_cycles;}
 
+		/**judge if the cgraLink can be occupy in MRRG
+		 */
 		bool canOccupyLink(CGRALink* t_cgraLink,int t_cycle,int t_II);
+		/**judge if the cgraNode can be occupy in MRRG
+		 */
+		bool canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II);
 };
 #endif
 

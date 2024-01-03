@@ -88,27 +88,32 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			return path;
 }
 
-/** this function try to find a paths to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.
+/** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
+ * use dijkstara search to find this path,if find this path, save it in t_path
  */
 void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
 	list<CGRANode*> searchPool;
 	map<CGRANode*,int> distance;//used to save the distance from t_srcCGRANode to a CGRANode on path
 	map<CGRANode*,int> timing;//used to save the clock cycle when arrive a CGRANode on path
 	map<CGRANode*,CGRANode*> previous;//used to save the predCGRANode on Path
+	bool successFindPath = false;//record if successd find the path
+	
+	//init data
 	for(int r=0;r<m_cgra->getrows();r++){
 		for(int c = 0;c<m_cgra->getcolumns();c++){
 			CGRANode* node = m_cgra->nodes[r][c];
-			distance[node] = m_mrrg->getMRRGcycles();
+			distance[node] = m_mrrg->getMRRGcycles();//init the distance to the max value
 			timing[node] = m_mapInfo[t_srcDFGNode]->cycle;
 			previous[node] = NULL;
 			searchPool.push_back(node);
 		}
 	}
-	distance[t_srcCGRANode] = 0;
+	distance[t_srcCGRANode] = 0;//set the distance of start node 0,start search
 
-	while (searchPool.size() != 0){
+	while (searchPool.size()!=0){//search the searchPool,until find the path to t_dstCGRANode
 		int mindistance = m_mrrg->getMRRGcycles() + 1;
 		CGRANode* mindisCGRANode;
+		//find the mindistance node,this also choose a path,and this node is the latest node in path, we will try to search the next node and add to this path.
 		for(CGRANode* node:searchPool){
 			if(distance[node] < mindistance){
 				mindistance = distance[node];
@@ -116,21 +121,35 @@ void Mapper::Dijkstra_search(map<CGRANode*,int>* t_path,DFGNodeInst* t_srcDFGNod
 			}
 		}
 		searchPool.remove(mindisCGRANode);
-		//found the target point
-		if(mindisCGRANode == t_dstCGRANode){
+
+		if(mindisCGRANode == t_dstCGRANode){//find the target CGRANode,exit searching
 			timing[t_dstCGRANode] = //!!!!!!TODO
+			successFindPath  = true;
 			break;
 		}
+
+		//haven't find the target CGRANode,update the distance and arrive timing from t_srcCGRANode to currentpath's latest node's neighbor nodes on current path.(add path head's neighbor to the path)
 		list<CGRANode*>* NeighborCGRANodes = mindisCGRANode->getNeighbors();
 		for(CGRANode* neighbor: *NeighborCGRANodes){
 			int cycle = timing[mindisCGRANode];
 			while(1){
 				CGRALink* currentLink = mindisCGRANode->getOutLinkto(neighbor);
-				if(LinkcanOccupy(currentLink,cycle)){//TODO
-
+				//if the CGRALink to neighbor can be occupied in this cycle in MRRG, then add the neighbor to current path.
+				if(m_mrrg->canOccupyLink(currentLink,cycle,m_II)){
+					int cost = distance[mindisCGRANode]+(cycle - timing[mindisCGRANode]) + 1;
+					if(cost < distance[neighbor]){
+						distance[neighbor] = cost;
+						timing[neighbor] = cycle + 1;
+						previous[neighbor] = mindisCGRANode;
+					}
+					break;
 				}
+				//this cycle the CGRALink is occupied, add cycle to try again.
+				cycle ++;
+				//if the cycle > maxcycle of MRRG,main we can't add this neighbor to current path give up this neighbor start trying next neighbor,if all neighbor can't been add to the path is also ok,distance,timing,and previous is not changed,and this path's head have been delete in search pool, next search will choose another path.
+				if(cycle > m_mrrg->getMRRGcycles())
+					break;
 			}
-			
 		}
 	}
 }

@@ -57,3 +57,11 @@ void MRRG::MRRGclear(){
     }
   }
 }
+
+bool MRRG::canOccupyLink(CGRALink* t_cgraLink,int t_cycle,int t_II){
+	for(int c=t_cycle;c<m_cycles;c=c+t_II){
+		if(m_LinkInfos[t_cgraLink]->m_occupied_state[c] != LINK_NOT_OCCUPY)
+						return false;
+	}
+	return true;
+}

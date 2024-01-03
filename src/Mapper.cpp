@@ -63,7 +63,7 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
 }
 
 /** this function try to get a map path to a certain CGRANode for a DFGNode .
- *  if t_InstNode has predNodes have been mapped,it will travels all mapped preNodes and try to find a shortest path from the CGRANode which a preNode is mapped,to the CGRANode which t_InstNode want to map to.
+ *  if t_InstNode has predNodes have been mapped,it will travels all mapped preNodes and try to find a longest path from the CGRANode which a preNode is mapped,to the CGRANode which t_InstNode want to map to.choose the longest path because we need to route all preNode to this node, if choose the shorest path,some preNode will route failed.
  *	@param t_InstNode: the DFGNode need to be mapped
  *	@param t_cgraNode: the CGRANode where the DFGNode is hoped to map to
  *	@return the path
@@ -74,15 +74,48 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 #endif
 			map<CGRANode*,int>* path = NULL;
 			bool allPredNodenotMapped = true;
+			int maxpathlastcycle = 0;
+			list<map<CGRANode*,int>*> temppaths;//save the temppath, used to delete no use temppaths.
 			for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
 				if(m_mapInfo[preInstNode]->mapped == true){
 					allPredNodenotMapped = false;
 					//create a tmp path,to save the path from the pre cgra node to the t_cgra node
 					//we only need to save the shortest path,delete other temppaths
 					map<CGRANode*,int>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
+					//after try to find a path,if the Dijkstra_search return NULL,mean the path to t_cgraNode not exsist,because not every mapped preNode has path to t_cgraNode
+					if(temppath == NULL){
+						if(temmppaths.size()!=0){
+							for(map<CGRANode*,int>* deletepath: temppaths){
+								delete deletepath;
+							}
+						}
+						return NULL;
+					//if the temmpath is found save it to the tmppaths,and find the longest temmpath and save to path.
+					}else{
+						temppaths.push_back(tmeppath);
+						if((*temppath)[t_cgraNode]>= maxpathlastcycle){
+							maxpathlastcycle = (*temppath)[t_cgraNode];
+							path = tempPath
+						}
+					}
 				}
 			}
-			return path;
+			//program reach here, has two situations,
+			//1.the path has already found
+			//2.allPredNodenotMapped == true,path not found
+			//handle situation one
+			if(path !=NULL){
+				for(map<CGRANode*,int>* noUseTempPath: temppaths){
+					if (noUseTempPath != path) delete noUseTempPath;
+				}
+				return path;
+			}
+			//handle situation two
+			if(allPredNodenotMapped == true){
+			
+			}
+			return NULL;
+
 }
 
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map

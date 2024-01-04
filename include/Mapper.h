@@ -30,6 +30,9 @@ class Mapper{
 		void getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,int>*>* t_paths);
 		map<CGRANode*,int>* getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode);
 		map<CGRANode*,int>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
+		map<CGRANode*,int>* getmaincostPath(list<map<CGRANode*,int>*>* paths);
+
+		bool schedule(map<CGRANode*,int>*mincostPath);
 
 		void dumpPath(map<CGRANode*,int>*path);
 

@@ -11,7 +11,6 @@ Mapper::Mapper(DFG* t_dfg,CGRA* t_cgra,MRRG* t_mrrg){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){
 		m_mapInfo[InstNode] = new MapInfo;
 	}
-
 }
 
 int Mapper::getResMII(){
@@ -35,8 +34,19 @@ void Mapper::heuristicMap(){
 		for(list<DFGNodeInst*>::iterator InstNode=m_dfg->getInstNodes()->begin();InstNode!=m_dfg->getInstNodes()->end(); InstNode ++){
 			list<map<CGRANode*,int>*> paths;
 			getMapPathsforInstNode(*InstNode,&paths);
-			//paths has no more use,delete
-			for(map<CGRANode*,int>* path : paths){delete path;}
+			//if found a paths for this InstNode
+			if(paths.size()!= 0){
+				
+			}
+			//if cant find a path for this InstNode
+			else{
+#ifdef CONFIG_MAP_DEBUG 
+				outs()<<"Can't find path for InstNode"<<(*InstNode)->getID()<<"\nFaild mapping with II = "<<m_II<<"\n";
+#endif
+				//paths has no more use,delete
+				for(map<CGRANode*,int>* path : paths){delete path;}
+				break;
+			}
 		}
 		m_II ++;
 	}
@@ -56,7 +66,18 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
 			CGRANode* cgraNode = m_cgra->nodes[r][c];
 			if(cgraNode->canSupport(t_InstNode->getOpcodeName()) and cgraNode->isdisable()==false){
 				map<CGRANode*,int>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
-				t_paths->push_back(path);
+				if(path != NULL){
+#ifdef CONFIG_MAP_DEBUG 
+				outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" success!\n"; 
+				dumpPath(path);
+#endif
+					t_paths->push_back(path);
+				}
+				else{
+#ifdef CONFIG_MAP_DEBUG 
+				outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" falied,can't find path!\n"; 
+#endif
+				}
 			}
 		}
 	}
@@ -69,9 +90,6 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
  *	@return the path
  */
 map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode){
-#ifdef CONFIG_MAP_DEBUG 
-		outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to "<<"CGRANode" << t_cgraNode->getID()<<"\n"; 
-#endif
 			map<CGRANode*,int>* path = NULL;
 			bool allPredNodenotMapped = true;
 			int maxpathlastcycle = 0;
@@ -84,7 +102,7 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 					map<CGRANode*,int>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
 					//after try to find a path,if the Dijkstra_search return NULL,mean the path to t_cgraNode not exsist,because not every mapped preNode has path to t_cgraNode
 					if(temppath == NULL){
-						if(temmppaths.size()!=0){
+						if(temppaths.size()!=0){
 							for(map<CGRANode*,int>* deletepath: temppaths){
 								delete deletepath;
 							}
@@ -92,10 +110,10 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 						return NULL;
 					//if the temmpath is found save it to the tmppaths,and find the longest temmpath and save to path.
 					}else{
-						temppaths.push_back(tmeppath);
+						temppaths.push_back(temppath);
 						if((*temppath)[t_cgraNode]>= maxpathlastcycle){
 							maxpathlastcycle = (*temppath)[t_cgraNode];
-							path = tempPath
+							path = temppath;
 						}
 					}
 				}
@@ -104,18 +122,26 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			//1.the path has already found
 			//2.allPredNodenotMapped == true,path not found
 			//handle situation one
-			if(path !=NULL){
+			if(path!=NULL){
 				for(map<CGRANode*,int>* noUseTempPath: temppaths){
 					if (noUseTempPath != path) delete noUseTempPath;
 				}
 				return path;
 			}
 			//handle situation two
+			//TODO: should not be any CGRA node
 			if(allPredNodenotMapped == true){
-			
+				int cycle = 0;
+				while(cycle <= m_mrrg->getMRRGcycles()){
+					if(m_mrrg->canOccupyNode(t_cgraNode,cycle,m_II)==true){
+						path = new map<CGRANode*,int>;
+						(*path)[t_cgraNode] = cycle;
+						return path;
+					}
+					cycle ++;	
+				}
 			}
 			return NULL;
-
 }
 
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
@@ -214,8 +240,18 @@ void Mapper::mapInfoInit(){
 	}
 }
 
+void Mapper::dumpPath(map<CGRANode*,int>*path){
+		outs()<<"  Path:";
+	 for(map<CGRANode*,int>::iterator it =path->begin();it != path->end();++it) {
+			if(it == path->end())
+				outs()<<"CGRANode"<<(it->first)->getID()<<"("<<it->second<<")"<<"->";
+			else
+				outs()<<"CGRANode"<<(it->first)->getID()<<"("<<it->second<<")\n";
+	 }
+}
 Mapper::~Mapper(){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){
 		delete m_mapInfo[InstNode];
 	}
 }
+

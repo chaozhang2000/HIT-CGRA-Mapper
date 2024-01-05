@@ -74,6 +74,10 @@ class MRRG {
 		/**judge if the cgraNode can be occupy in MRRG
 		 */
 		bool canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II);
+
+		/**schedule the CGRANode in the MRRG
+		 */
+		void scheduleNode(CGRANode* t_cgraNode,DFGNodeInst* t_dfgNode,int t_cycle,int t_II);
 };
 #endif
 

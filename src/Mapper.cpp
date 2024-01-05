@@ -46,7 +46,7 @@ void Mapper::heuristicMap(){
 				dumpPath(mincostPath);
 #endif
 				//map the mincostPath in MRRG
-				bool schedulesuccess = schedule(mincostPath);
+				bool schedulesuccess = schedule(mincostPath,*InstNode);
 				if(schedulesuccess){
 #ifdef CONFIG_MAP_DEBUG 
 					outs()<<"Success in schedule mincostPath\n";
@@ -270,7 +270,20 @@ map<CGRANode*,int>* Mapper::getmaincostPath(list<map<CGRANode*,int>*>* paths){
 		return mincostpath;
 }
 
-bool Mapper::schedule(map<CGRANode*,int>*path){
+/** this function try to schedule the path in MRRG
+ * @param t_InstNode: the dst DFGNode at the end of path
+ */
+bool Mapper::schedule(map<CGRANode*,int>*path,DFGNodeInst* t_InstNode){
+	//schedule the Node.
+	map<CGRANode*,int>::reverse_iterator ri = path->rbegin();
+	CGRANode* dstCGRANode = (*ri).first;
+#ifdef CONFIG_MAP_DEBUG 
+			outs()<<"schedule dfg node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle"<< (*path)[dstCGRANode] <<" with II: "<<m_II<<"\n"; 
+#endif
+	m_mrrg->scheduleNode(dstCGRANode,t_InstNode,(*ri).second,m_II);
+	
+	/*
+	//schedule the Link.
 	map<CGRANode*,int>::interator node_it = path->begin();
 	CGRANode* nodepre= (*node_it).first;
 	CGRANode* nodecurrent = NULL;
@@ -284,6 +297,7 @@ bool Mapper::schedule(map<CGRANode*,int>*path){
 			}	
 			nodepre = nodecurrent;
 	}
+	*/
 	return true;
 }
 

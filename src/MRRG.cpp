@@ -1,4 +1,5 @@
 #include "MRRG.h"
+#include <cassert>
 
 MRRG::MRRG(CGRA*t_cgra, int t_cycles){
 	m_cgra = t_cgra;
@@ -72,4 +73,16 @@ bool MRRG::canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II){
 						return false;
 	}
 	return true;
+}
+
+/**TODO: m_Src1OccupyState and m_Src2OccupyState not be handled yet
+ */
+void MRRG::scheduleNode(CGRANode* t_cgraNode,DFGNodeInst* t_dfgNode,int t_cycle,int t_II){
+	for(int c=t_cycle;c<m_cycles;c=c+t_II){
+		if(m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] != NULL){
+			assert("The path can't be schedule,this should not happen, the Mapper has some bugs");
+		}else{
+			m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] = t_dfgNode;
+		}
+	}
 }

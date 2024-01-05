@@ -282,22 +282,21 @@ bool Mapper::schedule(map<CGRANode*,int>*path,DFGNodeInst* t_InstNode){
 #endif
 	m_mrrg->scheduleNode(dstCGRANode,t_InstNode,(*ri).second,m_II);
 	
-	/*
 	//schedule the Link.
-	map<CGRANode*,int>::interator node_it = path->begin();
-	CGRANode* nodepre= (*node_it).first;
+	map<CGRANode*,int>::iterator it = path->begin();
+	CGRANode* nodepre= (*it).first;
 	CGRANode* nodecurrent = NULL;
 	CGRALink* currentLink = NULL;
-	for(node_it;node_it != path->end();node_it++){
-			nodecurrent = (*node_it).first;
-			m_mrrg->scheduleNode();
-			if(node_it != path->begin()){
-				getLink(nodepre,nodecurrent);
-				m_mrrg->scheduleLink();
+	for(it = path->begin();it != path->end();it++){
+			nodecurrent = (*it).first;
+			if(it != path->begin()){
+				currentLink = m_cgra->getEdgefrom(nodepre,nodecurrent);
+				int duration = (*path)[nodecurrent] - (*path)[nodepre];
+				outs()<<"currentLink:"<<currentLink->getID()<<"duration:"<< duration<<"\n";
+				//m_mrrg->scheduleLink(currentLink,duration);
 			}	
 			nodepre = nodecurrent;
 	}
-	*/
 	return true;
 }
 

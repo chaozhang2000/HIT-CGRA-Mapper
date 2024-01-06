@@ -27,15 +27,14 @@ class Mapper{
 		map<DFGNodeInst*,MapInfo*> m_mapInfo;
 
 		void mapInfoInit();
-		void getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,int>*>* t_paths);
-		map<CGRANode*,int>* getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode);
-		map<CGRANode*,int>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
-		map<CGRANode*,int>* getmaincostPath(list<map<CGRANode*,int>*>* paths);
+		void getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANode*>*>* t_paths);
+		map<int,CGRANode*>* getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode);
+		map<int,CGRANode*>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
+		map<int,CGRANode*>* getmaincostPath(list<map<int,CGRANode*>*>* paths);
 
-		bool schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode);
+		bool schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode);
 
-		void getOrderedPath(map<CGRANode*,int>* path,map<int,CGRANode*>*orderedpath);
-		void dumpOrderedPath(map<int,CGRANode*>*orderedpath);
+		void dumpPath(map<int,CGRANode*>*path);
 
   public:
 		/**The constructor function of class MRRG 

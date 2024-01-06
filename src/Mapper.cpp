@@ -32,7 +32,7 @@ void Mapper::heuristicMap(){
 
 		//Traverse all InstNodes in dfg, try to map them one by one
 		for(list<DFGNodeInst*>::iterator InstNode=m_dfg->getInstNodes()->begin();InstNode!=m_dfg->getInstNodes()->end(); InstNode ++){
-			list<map<CGRANode*,int>*> paths;
+			list<map<int,CGRANode*>*> paths;
 #ifdef CONFIG_MAP_DEBUG 
 			outs()<<"\nTry to find paths for DFGNode"<<(*InstNode)->getID()<<" to each CGRANode\n"; 
 #endif
@@ -40,19 +40,15 @@ void Mapper::heuristicMap(){
 			//if found some paths for this InstNode
 			if(paths.size()!= 0){
 				//find the mincostPath in paths
-				map<CGRANode*,int>* mincostPath = getmaincostPath(&paths);
+				map<int,CGRANode*>* mincostPath = getmaincostPath(&paths);
 
-
-				map<int,CGRANode*>* orderedmincostPath = new map<int,CGRANode*>;
-				getOrderedPath(mincostPath,orderedmincostPath);
 #ifdef CONFIG_MAP_DEBUG 
 				outs()<<"Find mincost Path: ";
-				dumpOrderedPath(orderedmincostPath);
+				dumpPath(mincostPath);
 #endif
 				//map the mincostPath in MRRG
-				bool schedulesuccess = schedule(orderedmincostPath,*InstNode);
-				delete orderedmincostPath;
-				for(map<CGRANode*,int>* path : paths){delete path;}
+				bool schedulesuccess = schedule(mincostPath,*InstNode);
+				for(map<int,CGRANode*>* path : paths){delete path;}
 				if(schedulesuccess){
 #ifdef CONFIG_MAP_DEBUG 
 					outs()<<"Success in schedule mincostPath\n";
@@ -71,7 +67,7 @@ void Mapper::heuristicMap(){
 				outs()<<"Can't find path for InstNode"<<(*InstNode)->getID()<<"\nFaild mapping with II = "<<m_II<<"\n";
 #endif
 				//paths has no more use,delete
-				for(map<CGRANode*,int>* path : paths){delete path;}
+				for(map<int,CGRANode*>* path : paths){delete path;}
 				break;
 			}
 		}
@@ -84,18 +80,16 @@ void Mapper::heuristicMap(){
  *	@param t_InstNode: the DFGNode need to be mapped
  *	@param t_paths: save the pathes
  */
-void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,int>*>* t_paths){
+void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANode*>*>* t_paths){
 	for(int r = 0; r< m_cgra->getrows();r++){
 		for(int c = 0; c< m_cgra->getcolumns();c++){
 			CGRANode* cgraNode = m_cgra->nodes[r][c];
 			if(cgraNode->canSupport(t_InstNode->getOpcodeName()) and cgraNode->isdisable()==false){
-				map<CGRANode*,int>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
+				map<int,CGRANode*>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
 				if(path != NULL){
 #ifdef CONFIG_MAP_DEBUG_PATH 
 				outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" success!\n  Path:";
-				map<int,CGRANode*> orderedpath;
-				getOrderedPath(path,&orderedpath);
-				dumpOrderedPath(&orderedpath);
+				dumpPath(path);
 #endif
 					t_paths->push_back(path);
 				}
@@ -115,21 +109,21 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
  *	@param t_cgraNode: the CGRANode where the DFGNode is hoped to map to
  *	@return the path
  */
-map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode){
-			map<CGRANode*,int>* path = NULL;
+map<int,CGRANode*>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode){
+			map<int,CGRANode*>* path = NULL;
 			bool allPredNodenotMapped = true;
 			int maxpathlastcycle = 0;
-			list<map<CGRANode*,int>*> temppaths;//save the temppath, used to delete no use temppaths.
+			list<map<int,CGRANode*>*> temppaths;//save the temppath, used to delete no use temppaths.
 			for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
 				if(m_mapInfo[preInstNode]->mapped == true){
 					allPredNodenotMapped = false;
 					//create a tmp path,to save the path from the pre cgra node to the t_cgra node
 					//we only need to save the shortest path,delete other temppaths
-					map<CGRANode*,int>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
+					map<int,CGRANode*>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,t_cgraNode);
 					//after try to find a path,if the Dijkstra_search return NULL,mean the path to t_cgraNode not exsist,because not every mapped preNode has path to t_cgraNode
 					if(temppath == NULL){
 						if(temppaths.size()!=0){
-							for(map<CGRANode*,int>* deletepath: temppaths){
+							for(map<int,CGRANode*>* deletepath: temppaths){
 								delete deletepath;
 							}
 						}
@@ -137,8 +131,9 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 					//if the temmpath is found save it to the tmppaths,and find the longest temmpath and save to path.
 					}else{
 						temppaths.push_back(temppath);
-						if((*temppath)[t_cgraNode]>= maxpathlastcycle){
-							maxpathlastcycle = (*temppath)[t_cgraNode];
+						map<int,CGRANode*>::reverse_iterator rit = temppath->rbegin();
+						if((*rit).first>= maxpathlastcycle){
+							maxpathlastcycle = (*rit).first;
 							path = temppath;
 						}
 					}
@@ -149,8 +144,10 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			//2.allPredNodenotMapped == true,path not found
 			//handle situation one
 			if(path!=NULL){
-				for(map<CGRANode*,int>* noUseTempPath: temppaths){
-					if (noUseTempPath != path) delete noUseTempPath;
+				for(map<int,CGRANode*>* noUseTempPath: temppaths){
+					if(noUseTempPath!=path){
+								delete noUseTempPath;
+					}
 				}
 				return path;
 			}
@@ -158,10 +155,10 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			//TODO: should not be any CGRA node
 			if(allPredNodenotMapped == true){
 				int cycle = 0;
+				path = new map<int,CGRANode*>;
 				while(cycle <= m_mrrg->getMRRGcycles()){
 					if(m_mrrg->canOccupyNode(t_cgraNode,cycle,m_II)==true){
-						path = new map<CGRANode*,int>;
-						(*path)[t_cgraNode] = cycle;
+						(*path)[cycle] = t_cgraNode;
 						return path;
 					}
 					cycle ++;	
@@ -173,7 +170,7 @@ map<CGRANode*,int>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
  * use dijkstara search to find this path,if find this path,return path,else return NULL
  */
-map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
+map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
 	list<CGRANode*> searchPool;
 	map<CGRANode*,int> distance;//used to save the distance from t_srcCGRANode to a CGRANode on path
 	map<CGRANode*,int> timing;//used to save the clock cycle when arrive a CGRANode on path
@@ -242,14 +239,20 @@ map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 		}
 	}
 	//if the path is found, add it to path and return path
-	map<CGRANode*,int>* path = NULL;
+	map<int,CGRANode*>* path = NULL;
 	if(successFindPath){
 	 CGRANode* u = t_dstCGRANode;
-	 path =  new map<CGRANode*,int>;
+	 path =  new map<int,CGRANode*>;
 	 while(u!=NULL){
-	 	(*path)[u] = timing[u];
+	 	(*path)[timing[u]] = u;
 		u = previous[u];
-	 }	 
+	 }
+	 //this is used to handle the special situation,
+	 //when the succnode and the pre node are calculate in the same CGRANode,the unordered path just has one node
+	 //but we also want the pre node's information, we want a path like CGRANode0(0)->CGRANode0(1),but not like CGRANode0(1)->
+	 if(t_srcCGRANode == t_dstCGRANode){
+	 	(*path)[m_mapInfo[t_srcDFGNode]->cycle] = t_dstCGRANode;
+	 }
 	}
 	return path;
 }
@@ -257,16 +260,15 @@ map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 /** this function try to find a path with min cost,(choose a path to schedule)
  * TODO: now only consider the distance cost,more should be consider later
  */
-map<CGRANode*,int>* Mapper::getmaincostPath(list<map<CGRANode*,int>*>* paths){
-			//list<map<CGRANode*,int>*> paths;
-		map<CGRANode*,int>::reverse_iterator rit = paths->front()->rbegin();
-		int mincost = (*rit).second;
-		map<CGRANode*,int>* mincostpath = paths->front();
-		for(map<CGRANode*,int>* path : *paths){
+map<int,CGRANode*>* Mapper::getmaincostPath(list<map<int,CGRANode*>*>* paths){
+		map<int,CGRANode*>::reverse_iterator rit = paths->front()->rbegin();
+		int mincost = (*rit).first;
+		map<int,CGRANode*>* mincostpath = paths->front();
+		for(map<int,CGRANode*>* path : *paths){
 				rit = path->rbegin();
-				if((*rit).second < mincost){
+				if((*rit).first < mincost){
 					mincostpath = path;
-					mincost = (*rit).second;
+					mincost = (*rit).first;
 				}
 		}
 		return mincostpath;
@@ -275,9 +277,9 @@ map<CGRANode*,int>* Mapper::getmaincostPath(list<map<CGRANode*,int>*>* paths){
 /** this function try to schedule the path in MRRG
  * @param t_InstNode: the dst DFGNode at the end of path
  */
-bool Mapper::schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode){
+bool Mapper::schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode){
 	//schedule the Node.
-	map<int,CGRANode*>::reverse_iterator ri = orderedpath->rbegin();
+	map<int,CGRANode*>::reverse_iterator ri = path->rbegin();
 	CGRANode* dstCGRANode = (*ri).second;
 #ifdef CONFIG_MAP_DEBUG_SCHEDULE 
 			outs()<<"Schedule DFG node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle "<< (*ri).first <<" with II: "<<m_II<<"\n"; 
@@ -288,25 +290,27 @@ bool Mapper::schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode){
 	m_mapInfo[t_InstNode]->mapped = true;
 	
 	//schedule the Link.
-	map<int,CGRANode*>::iterator it = orderedpath->begin();
+	map<int,CGRANode*>::iterator it = path->begin();
 	int cyclepre = (*it).first;
 	int cyclecurrent = 0;
 	CGRALink* currentLink = NULL;
-	for(it = orderedpath->begin();it != orderedpath->end();it++){
+	for(it = path->begin();it != path->end();it++){
 			cyclecurrent = (*it).first;
-			if(it != orderedpath->begin()){
-				currentLink = m_cgra->getEdgefrom((*orderedpath)[cyclepre],(*orderedpath)[cyclecurrent]);
-				int duration = cyclecurrent - cyclepre - 1;
+			if(it != path->begin()){
+				if((*path)[cyclepre]!=(*path)[cyclecurrent]){
+					currentLink = m_cgra->getEdgefrom((*path)[cyclepre],(*path)[cyclecurrent]);
+					int duration = cyclecurrent - cyclepre - 1;
 #ifdef CONFIG_MAP_DEBUG_SCHEDULE 
-			outs()<<"Schedule CGRALink["<<currentLink->getID()<<"] from CGRANode["<<(*orderedpath)[cyclepre]->getID()<<"] to CGRANode["<< (*orderedpath)[cyclecurrent]->getID()<<"] at cycle "<<cyclepre<<" to cycle "<<cyclepre + duration<<" with II = "<<m_II<<"\n"; 
+					outs()<<"Schedule CGRALink["<<currentLink->getID()<<"] from CGRANode["<<(*path)[cyclepre]->getID()<<"] to CGRANode["<< (*path)[cyclecurrent]->getID()<<"] at cycle "<<cyclepre<<" to cycle "<<cyclepre + duration<<" with II = "<<m_II<<"\n"; 
 #endif
-				m_mrrg->scheduleLink(currentLink,cyclepre,duration,m_II);
+					m_mrrg->scheduleLink(currentLink,cyclepre,duration,m_II);
+				}
 			}	
 			cyclepre= cyclecurrent;
 	}
 
-	//route the mapped prenode 
 	/*
+	//route the mapped prenode 
 	for(DFGNodeInst* preNode: *(t_InstNode->getPredInstNodes())){
 		if(m_mapInfo[preNode]->mapped == true and m_mapInfo[preNode]->cgraNode
 	}*/
@@ -322,17 +326,11 @@ void Mapper::mapInfoInit(){
 	}
 }
 
-void Mapper::dumpOrderedPath(map<int,CGRANode*>*orderedpath){
-	 for(map<int,CGRANode*>::iterator it =orderedpath->begin();it != orderedpath->end();it++) {
+void Mapper::dumpPath(map<int,CGRANode*>*path){
+	 for(map<int,CGRANode*>::iterator it =path->begin();it != path->end();it++) {
 				outs()<<"CGRANode"<<(it->second)->getID()<<"("<<it->first<<")"<<"->";
 	 }
 	 outs()<<"\n";
-}
-
-void Mapper::getOrderedPath(map<CGRANode*,int>* path,map<int,CGRANode*>*orderedpath){
-	for(map<CGRANode*,int>::iterator it = path->begin();it != path->end();it++ ){
-		(*orderedpath)[(*it).second] = (*it).first;
-	}
 }
 
 Mapper::~Mapper(){

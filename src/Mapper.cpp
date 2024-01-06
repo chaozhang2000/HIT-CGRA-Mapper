@@ -245,17 +245,11 @@ map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 	map<CGRANode*,int>* path = NULL;
 	if(successFindPath){
 	 CGRANode* u = t_dstCGRANode;
-	 map<CGRANode*,int> reverseOrderPath;
 	 path =  new map<CGRANode*,int>;
 	 while(u!=NULL){
-		//outs()<<"Node:"<<u->getID()<<"cycle"<<timing[u]<<"\n";
-	 	reverseOrderPath[u] = timing[u];
+	 	(*path)[u] = timing[u];
 		u = previous[u];
 	 }	 
-	 for(map<CGRANode*,int>::reverse_iterator rit = reverseOrderPath.rbegin();rit != reverseOrderPath.rend();++rit) {
-		//outs()<<"Node:"<<rit->first<<rit->first->getID()<<"cycle"<<rit->second<<"\n";
-			(*path)[rit->first]=rit->second;
-	 }
 	}
 	return path;
 }
@@ -286,7 +280,7 @@ bool Mapper::schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode){
 	map<int,CGRANode*>::reverse_iterator ri = orderedpath->rbegin();
 	CGRANode* dstCGRANode = (*ri).second;
 #ifdef CONFIG_MAP_DEBUG_SCHEDULE 
-			outs()<<"schedule dfg node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle "<< (*ri).first <<" with II: "<<m_II<<"\n"; 
+			outs()<<"Schedule DFG node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle "<< (*ri).first <<" with II: "<<m_II<<"\n"; 
 #endif
 	m_mrrg->scheduleNode(dstCGRANode,t_InstNode,(*ri).first,m_II);
 	m_mapInfo[t_InstNode]->cgraNode = dstCGRANode;
@@ -303,10 +297,20 @@ bool Mapper::schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode){
 			if(it != orderedpath->begin()){
 				currentLink = m_cgra->getEdgefrom((*orderedpath)[cyclepre],(*orderedpath)[cyclecurrent]);
 				int duration = cyclecurrent - cyclepre - 1;
-				m_mrrg->scheduleLink(currentLink,cyclecurrent,duration,m_II);
+#ifdef CONFIG_MAP_DEBUG_SCHEDULE 
+			outs()<<"Schedule CGRALink["<<currentLink->getID()<<"] from CGRANode["<<(*orderedpath)[cyclepre]->getID()<<"] to CGRANode["<< (*orderedpath)[cyclecurrent]->getID()<<"] at cycle "<<cyclepre<<" to cycle "<<cyclepre + duration<<" with II = "<<m_II<<"\n"; 
+#endif
+				m_mrrg->scheduleLink(currentLink,cyclepre,duration,m_II);
 			}	
 			cyclepre= cyclecurrent;
 	}
+
+	//route the mapped prenode 
+	/*
+	for(DFGNodeInst* preNode: *(t_InstNode->getPredInstNodes())){
+		if(m_mapInfo[preNode]->mapped == true and m_mapInfo[preNode]->cgraNode
+	}*/
+	
 	return true;
 }
 

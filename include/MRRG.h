@@ -78,6 +78,10 @@ class MRRG {
 		/**schedule the CGRANode in the MRRG
 		 */
 		void scheduleNode(CGRANode* t_cgraNode,DFGNodeInst* t_dfgNode,int t_cycle,int t_II);
+
+		/**schedule the CGRALink in the MRRG
+		 */
+		void scheduleLink(CGRALink* t_cgraLink,int t_cycle,int duration,int t_II);
 };
 #endif
 

@@ -41,23 +41,27 @@ void Mapper::heuristicMap(){
 			if(paths.size()!= 0){
 				//find the mincostPath in paths
 				map<CGRANode*,int>* mincostPath = getmaincostPath(&paths);
+
+
+				map<int,CGRANode*>* orderedmincostPath = new map<int,CGRANode*>;
+				getOrderedPath(mincostPath,orderedmincostPath);
 #ifdef CONFIG_MAP_DEBUG 
-				outs()<<"Choose mincost Path: ";
-				dumpPath(mincostPath);
+				outs()<<"Find mincost Path: ";
+				dumpOrderedPath(orderedmincostPath);
 #endif
 				//map the mincostPath in MRRG
-				bool schedulesuccess = schedule(mincostPath,*InstNode);
+				bool schedulesuccess = schedule(orderedmincostPath,*InstNode);
+				delete orderedmincostPath;
+				for(map<CGRANode*,int>* path : paths){delete path;}
 				if(schedulesuccess){
 #ifdef CONFIG_MAP_DEBUG 
 					outs()<<"Success in schedule mincostPath\n";
 #endif
-					for(map<CGRANode*,int>* path : paths){delete path;}
 				}
 				else{
 #ifdef CONFIG_MAP_DEBUG 
 					outs()<<"Failed in schedule mincostPath\n";
 #endif
-					for(map<CGRANode*,int>* path : paths){delete path;}
 					break;
 				}
 			}
@@ -87,14 +91,16 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<CGRANode*,i
 			if(cgraNode->canSupport(t_InstNode->getOpcodeName()) and cgraNode->isdisable()==false){
 				map<CGRANode*,int>* path = getPathforInstNodetoCGRANode(t_InstNode,cgraNode);
 				if(path != NULL){
-#ifdef CONFIG_MAP_DEBUG 
+#ifdef CONFIG_MAP_DEBUG_PATH 
 				outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" success!\n  Path:";
-				dumpPath(path);
+				map<int,CGRANode*> orderedpath;
+				getOrderedPath(path,&orderedpath);
+				dumpOrderedPath(&orderedpath);
 #endif
 					t_paths->push_back(path);
 				}
 				else{
-#ifdef CONFIG_MAP_DEBUG 
+#ifdef CONFIG_MAP_DEBUG_PATH 
 				outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" falied,can't find path!\n"; 
 #endif
 				}
@@ -242,10 +248,12 @@ map<CGRANode*,int>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 	 map<CGRANode*,int> reverseOrderPath;
 	 path =  new map<CGRANode*,int>;
 	 while(u!=NULL){
+		//outs()<<"Node:"<<u->getID()<<"cycle"<<timing[u]<<"\n";
 	 	reverseOrderPath[u] = timing[u];
 		u = previous[u];
 	 }	 
 	 for(map<CGRANode*,int>::reverse_iterator rit = reverseOrderPath.rbegin();rit != reverseOrderPath.rend();++rit) {
+		//outs()<<"Node:"<<rit->first<<rit->first->getID()<<"cycle"<<rit->second<<"\n";
 			(*path)[rit->first]=rit->second;
 	 }
 	}
@@ -273,29 +281,31 @@ map<CGRANode*,int>* Mapper::getmaincostPath(list<map<CGRANode*,int>*>* paths){
 /** this function try to schedule the path in MRRG
  * @param t_InstNode: the dst DFGNode at the end of path
  */
-bool Mapper::schedule(map<CGRANode*,int>*path,DFGNodeInst* t_InstNode){
+bool Mapper::schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode){
 	//schedule the Node.
-	map<CGRANode*,int>::reverse_iterator ri = path->rbegin();
-	CGRANode* dstCGRANode = (*ri).first;
-#ifdef CONFIG_MAP_DEBUG 
-			outs()<<"schedule dfg node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle"<< (*path)[dstCGRANode] <<" with II: "<<m_II<<"\n"; 
+	map<int,CGRANode*>::reverse_iterator ri = orderedpath->rbegin();
+	CGRANode* dstCGRANode = (*ri).second;
+#ifdef CONFIG_MAP_DEBUG_SCHEDULE 
+			outs()<<"schedule dfg node["<<t_InstNode->getID()<<"] onto CGRANode["<<dstCGRANode->getID()<<"] at cycle "<< (*ri).first <<" with II: "<<m_II<<"\n"; 
 #endif
-	m_mrrg->scheduleNode(dstCGRANode,t_InstNode,(*ri).second,m_II);
+	m_mrrg->scheduleNode(dstCGRANode,t_InstNode,(*ri).first,m_II);
+	m_mapInfo[t_InstNode]->cgraNode = dstCGRANode;
+	m_mapInfo[t_InstNode]->cycle = (*ri).first;
+	m_mapInfo[t_InstNode]->mapped = true;
 	
 	//schedule the Link.
-	map<CGRANode*,int>::iterator it = path->begin();
-	CGRANode* nodepre= (*it).first;
-	CGRANode* nodecurrent = NULL;
+	map<int,CGRANode*>::iterator it = orderedpath->begin();
+	int cyclepre = (*it).first;
+	int cyclecurrent = 0;
 	CGRALink* currentLink = NULL;
-	for(it = path->begin();it != path->end();it++){
-			nodecurrent = (*it).first;
-			if(it != path->begin()){
-				currentLink = m_cgra->getEdgefrom(nodepre,nodecurrent);
-				int duration = (*path)[nodecurrent] - (*path)[nodepre];
-				outs()<<"currentLink:"<<currentLink->getID()<<"duration:"<< duration<<"\n";
-				//m_mrrg->scheduleLink(currentLink,duration);
+	for(it = orderedpath->begin();it != orderedpath->end();it++){
+			cyclecurrent = (*it).first;
+			if(it != orderedpath->begin()){
+				currentLink = m_cgra->getEdgefrom((*orderedpath)[cyclepre],(*orderedpath)[cyclecurrent]);
+				int duration = cyclecurrent - cyclepre - 1;
+				m_mrrg->scheduleLink(currentLink,cyclecurrent,duration,m_II);
 			}	
-			nodepre = nodecurrent;
+			cyclepre= cyclecurrent;
 	}
 	return true;
 }
@@ -308,14 +318,19 @@ void Mapper::mapInfoInit(){
 	}
 }
 
-void Mapper::dumpPath(map<CGRANode*,int>*path){
-	 for(map<CGRANode*,int>::iterator it =path->begin();it != path->end();++it) {
-			if(it == path->end())
-				outs()<<"CGRANode"<<(it->first)->getID()<<"("<<it->second<<")"<<"->";
-			else
-				outs()<<"CGRANode"<<(it->first)->getID()<<"("<<it->second<<")\n";
+void Mapper::dumpOrderedPath(map<int,CGRANode*>*orderedpath){
+	 for(map<int,CGRANode*>::iterator it =orderedpath->begin();it != orderedpath->end();it++) {
+				outs()<<"CGRANode"<<(it->second)->getID()<<"("<<it->first<<")"<<"->";
 	 }
+	 outs()<<"\n";
 }
+
+void Mapper::getOrderedPath(map<CGRANode*,int>* path,map<int,CGRANode*>*orderedpath){
+	for(map<CGRANode*,int>::iterator it = path->begin();it != path->end();it++ ){
+		(*orderedpath)[(*it).second] = (*it).first;
+	}
+}
+
 Mapper::~Mapper(){
 	for(DFGNodeInst* InstNode: *(m_dfg->getInstNodes())){
 		delete m_mapInfo[InstNode];

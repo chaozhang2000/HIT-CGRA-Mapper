@@ -32,9 +32,10 @@ class Mapper{
 		map<CGRANode*,int>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
 		map<CGRANode*,int>* getmaincostPath(list<map<CGRANode*,int>*>* paths);
 
-		bool schedule(map<CGRANode*,int>*path,DFGNodeInst* t_InstNode);
+		bool schedule(map<int,CGRANode*>*orderedpath,DFGNodeInst* t_InstNode);
 
-		void dumpPath(map<CGRANode*,int>*path);
+		void getOrderedPath(map<CGRANode*,int>* path,map<int,CGRANode*>*orderedpath);
+		void dumpOrderedPath(map<int,CGRANode*>*orderedpath);
 
   public:
 		/**The constructor function of class MRRG 

@@ -80,9 +80,22 @@ bool MRRG::canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II){
 void MRRG::scheduleNode(CGRANode* t_cgraNode,DFGNodeInst* t_dfgNode,int t_cycle,int t_II){
 	for(int c=t_cycle;c<m_cycles;c=c+t_II){
 		if(m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] != NULL){
-			assert("The path can't be schedule,this should not happen, the Mapper has some bugs");
+			assert("The CGRANode in path can't be schedule,this should not happen, the Mapper has some bugs");
 		}else{
 			m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] = t_dfgNode;
+		}
+	}
+}
+
+void MRRG::scheduleLink(CGRALink* t_cgraLink,int t_cycle,int duration,int t_II){
+	for(int c=t_cycle;c<m_cycles;c=c+t_II){
+		for(int d = 0;d<duration and c+d < m_cycles;d++){
+			if(m_LinkInfos[t_cgraLink]->m_occupied_state[c+d]!=LINK_NOT_OCCUPY){
+				assert("The CGRALink in path can't be schedule,this should not happen, the Mapper has some bugs");
+			}
+			else{
+				m_LinkInfos[t_cgraLink]->m_occupied_state[c+d]=LINK_OCCUPY_FROM_N;
+			}
 		}
 	}
 }

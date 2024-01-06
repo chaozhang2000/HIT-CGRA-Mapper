@@ -71,7 +71,7 @@ namespace {
 
 			CGRA* cgra = new CGRA(4,4);
 
-			MRRG* mrrg = new MRRG(cgra,1);
+			MRRG* mrrg = new MRRG(cgra,100);
 
 			Mapper* mapper = new Mapper(dfg,cgra,mrrg);
 

@@ -31,6 +31,13 @@ class Mapper{
 		map<int,CGRANode*>* getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode);
 		map<int,CGRANode*>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
 		map<int,CGRANode*>* getmaincostPath(list<map<int,CGRANode*>*>* paths);
+		//new add
+		bool allPreInstNodeNotMapped(DFGNodeInst* t_InstNode);
+		bool allPreInstNodeMapped(DFGNodeInst* t_InstNode);
+		map<int,CGRANode*>* getMapPathforStartInstNode(DFGNodeInst* t_InstNode);
+		
+
+		//
 
 		bool schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode);
 

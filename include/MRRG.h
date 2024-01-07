@@ -25,38 +25,57 @@ enum {LINK_NOT_OCCUPY,
 				LINK_OCCUPY_FROM_E,
 				LINK_OCCUPY_FROM_FU};
 
-class MRRG {
-  private:
-		class NodeInfo{
-			public:
-		/** this var is used to record the CGRANode is occupyed by a DFGNode at certain cycle
-		 * m_OccupyedByNode = new DFGNodeInst*[cycle];
-		 */
+struct NodeInfo{
+/** this var is used to record the CGRANode is occupyed by a DFGNode at certain cycle
+* m_OccupyedByNode = new DFGNodeInst*[cycle];
+*/
 		DFGNodeInst** m_OccupiedByNode;
 
-		/**record if the Src1 or Src2 input mux is occpuied at a certain cycle,and it's occupied state
-		 * for example
-		 * SRC_OCCUPY_N,mean the mux is occupy and the src1 data is come from the input CGRALink from north
-		 * SRC_OCCUPY_FU,mean the CGRALink is occupy and the output data is come from the fu out last time
-		 */
+/**record if the Src1 or Src2 input mux is occpuied at a certain cycle,and it's occupied state
+* for example
+* SRC_OCCUPY_N,mean the mux is occupy and the src1 data is come from the input CGRALink from north
+* SRC_OCCUPY_FU,mean the CGRALink is occupy and the output data is come from the fu out last time
+*/
 		int *m_Src1OccupyState;
 		int *m_Src2OccupyState;
-		};
-		class LinkInfo{
-			public:
-		/**record if the CGRALink is occpuied at a certain cycle,and it's occupied state
-		 * for example
-		 * LINK_OCCUPY_N,mean the CGRALink is occupy and the output data is come from the input from north
-		 * LINK_OCCUPY_FU,mean the CGRALink is occupy and the output data is come from the fu out
-		 */
+};
+
+struct LinkInfo{
+/**record if the CGRALink is occpuied at a certain cycle,and it's occupied state
+* for example
+* LINK_OCCUPY_N,mean the CGRALink is occupy and the output data is come from the input from north
+* LINK_OCCUPY_FU,mean the CGRALink is occupy and the output data is come from the fu out
+*/
 		int *m_occupied_state;
-		};
+};
+
+struct unSubmitNode{
+	CGRANode* node;
+	int cycle;
+
+	DFGNodeInst* dfgNode;
+	int Src1OccupyState;
+	int Src2OccupyState;
+};
+struct unSubmitLink{
+	CGRALink* link;
+	int cycle;
+
+	int OccupyState;
+};
+
+class MRRG {
+  private:
 		CGRA* m_cgra;
 
 		int m_cycles;
 
 		map<CGRANode*,NodeInfo*> m_NodeInfos;
 		map<CGRALink*,LinkInfo*> m_LinkInfos;
+		
+		list<unSubmitNode*> m_unSubmitNodes;
+		list<unSubmitLink*> m_unSubmitLinks;
+
   public:
 		/**The constructor function of class MRRG 
 		 */
@@ -84,5 +103,6 @@ class MRRG {
 		 */
 		void scheduleLink(CGRALink* t_cgraLink,int t_cycle,int duration,int t_II);
 };
+
 #endif
 

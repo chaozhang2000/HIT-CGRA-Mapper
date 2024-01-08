@@ -70,9 +70,13 @@ class MRRG {
 
 		int m_cycles;
 
+		/** Used to save MRRG Data
+		 */
 		map<CGRANode*,NodeInfo*> m_NodeInfos;
 		map<CGRALink*,LinkInfo*> m_LinkInfos;
 		
+		/** Used to save unsubmit Data
+		 */
 		list<unSubmitNode*> m_unSubmitNodes;
 		list<unSubmitLink*> m_unSubmitLinks;
 
@@ -90,10 +94,14 @@ class MRRG {
 
 		/**judge if the cgraLink can be occupy in MRRG
 		 */
-		bool canOccupyLink(CGRALink* t_cgraLink,int t_cycle,int t_II);
+		bool canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_II);
+		/**judge if the cgraLink can be occupy in unsubmit CGRALinks
+		 */
+		bool canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_II);
 		/**judge if the cgraNode can be occupy in MRRG
 		 */
-		bool canOccupyNode(CGRANode* t_cgraNode,int t_cycle,int t_II);
+		bool canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_II);
+
 
 		/**schedule the CGRANode in the MRRG
 		 */
@@ -102,6 +110,10 @@ class MRRG {
 		/**schedule the CGRALink in the MRRG
 		 */
 		void scheduleLink(CGRALink* t_cgraLink,int t_cycle,int duration,int t_II);
+
+		/**submit the change to MRRG
+		 */
+		void submitschedule();
 };
 
 #endif

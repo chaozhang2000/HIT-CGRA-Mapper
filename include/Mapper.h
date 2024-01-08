@@ -36,10 +36,9 @@ class Mapper{
 		bool allPreInstNodeMapped(DFGNodeInst* t_InstNode);
 		map<int,CGRANode*>* getMapPathforStartInstNode(DFGNodeInst* t_InstNode);
 		
-
 		//
 
-		bool schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode);
+		bool schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode,bool t_IncludeDstCGRANode);
 
 		void dumpPath(map<int,CGRANode*>*path);
 

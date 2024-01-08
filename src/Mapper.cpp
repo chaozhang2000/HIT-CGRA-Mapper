@@ -36,9 +36,9 @@ void Mapper::heuristicMap(){
 			if(allPreInstNodeNotMapped(*InstNode)){
 				map<int,CGRANode*>* path = getMapPathforStartInstNode(*InstNode);
 				if(path != NULL){//find path
-					//schedule(path,*InstNode);
+					schedule(path,*InstNode,true);
 					delete path;
-					//mrrg->submitschedule();
+					m_mrrg->submitschedule();
 					continue;
 				}
 				else{//not find path, map failed add II try again
@@ -91,7 +91,7 @@ map<int,CGRANode*>* Mapper::getMapPathforStartInstNode(DFGNodeInst* t_InstNode){
 				int cycle = 0;
 				map<int,CGRANode*>*path = NULL;
 				while(cycle <= m_mrrg->getMRRGcycles()){
-					if(m_mrrg->canOccupyNode(cgraNode,cycle,m_II)==true){
+					if(m_mrrg->canOccupyNodeInMRRG(cgraNode,cycle,m_II)==true){
 						path = new map<int,CGRANode*>;
 						(*path)[cycle] = cgraNode;
 						break;
@@ -212,7 +212,7 @@ map<int,CGRANode*>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 				int cycle = 0;
 				path = new map<int,CGRANode*>;
 				while(cycle <= m_mrrg->getMRRGcycles()){
-					if(m_mrrg->canOccupyNode(t_cgraNode,cycle,m_II)==true){
+					if(m_mrrg->canOccupyNodeInMRRG(t_cgraNode,cycle,m_II)==true){
 						(*path)[cycle] = t_cgraNode;
 						return path;
 					}
@@ -259,7 +259,7 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 		if(mindisCGRANode == t_dstCGRANode){//find the target CGRANode,exit searching
 			int time = timing[t_dstCGRANode];
 			while(time < m_mrrg->getMRRGcycles()){
-				if(m_mrrg->canOccupyNode(t_dstCGRANode,time,m_II)==true){
+				if(m_mrrg->canOccupyNodeInMRRG(t_dstCGRANode,time,m_II)==true){
 					successFindPath  = true;//search to the t_dstCGRANode and the t_dstCGRANode can be occupy,mean find path successfully.
 					break;
 				}
@@ -276,7 +276,7 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 			while(1){
 				CGRALink* currentLink = mindisCGRANode->getOutLinkto(neighbor);
 				//if the CGRALink to neighbor can be occupied in this cycle in MRRG, then add the neighbor to current path.
-				if(m_mrrg->canOccupyLink(currentLink,cycle,m_II)){
+				if(m_mrrg->canOccupyLinkInMRRG(currentLink,cycle,m_II) and m_mrrg->canOccupyLinkInUnSubmit(currentLink,cycle,m_II) ){
 					int cost = distance[mindisCGRANode]+(cycle - timing[mindisCGRANode]) + 1;
 					if(cost < distance[neighbor]){
 						distance[neighbor] = cost;
@@ -332,8 +332,9 @@ map<int,CGRANode*>* Mapper::getmaincostPath(list<map<int,CGRANode*>*>* paths){
 /** this function try to schedule the path in MRRG
  * @param t_InstNode: the dst DFGNode at the end of path
  */
-bool Mapper::schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode){
+bool Mapper::schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode,bool t_IncludeDstCGRANode){
 	//schedule the Node.
+	if(t_IncludeDstCGRANode){
 	map<int,CGRANode*>::reverse_iterator ri = path->rbegin();
 	CGRANode* dstCGRANode = (*ri).second;
 #ifdef CONFIG_MAP_DEBUG_SCHEDULE 
@@ -343,6 +344,7 @@ bool Mapper::schedule(map<int,CGRANode*>*path,DFGNodeInst* t_InstNode){
 	m_mapInfo[t_InstNode]->cgraNode = dstCGRANode;
 	m_mapInfo[t_InstNode]->cycle = (*ri).first;
 	m_mapInfo[t_InstNode]->mapped = true;
+	}
 	
 	//schedule the Link.
 	map<int,CGRANode*>::iterator it = path->begin();

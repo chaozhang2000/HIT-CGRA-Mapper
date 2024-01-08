@@ -224,6 +224,7 @@ map<int,CGRANode*>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
  * use dijkstara search to find this path,if find this path,return path,else return NULL
+ * TODO: now assum the fu can't save data more than one cycle,if the CGRANode can be occupied,the date can save in CGRANode for more than one cycle.
  */
 map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode){
 	list<CGRANode*> searchPool;
@@ -260,8 +261,37 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 			int time = timing[t_dstCGRANode];
 			while(time < m_mrrg->getMRRGcycles()){
 				if(m_mrrg->canOccupyNodeInMRRG(t_dstCGRANode,time,m_II)==true){
-					successFindPath  = true;//search to the t_dstCGRANode and the t_dstCGRANode can be occupy,mean find path successfully.
-					break;
+					if(t_dstCGRANode == t_srcCGRANode){// the sitiation dstCGRANode == srcCGRANode, only support CGRAx(n)->CGRAx(n+1)
+						if(time == timing[t_dstCGRANode] + 1){
+							successFindPath = true;
+							break;
+						}
+						else{
+							break;
+						}
+					}
+					else{//the situation dstCGRANode != srcCGRANode, if the t_dstCGRANode need to wait, we need to save the data in the preCGRANode.
+						int addcost = time-timing[t_dstCGRANode];
+						if(addcost >=1){
+							CGRANode* preCGRANode = previous[t_dstCGRANode];
+							if(previous[preCGRANode] != NULL){
+								CGRANode* prepreCGRANode = previous[preCGRANode];
+								CGRALink* preLink = m_cgra->getEdgefrom(prepreCGRANode,preCGRANode);
+								int cyclepre = timing[prepreCGRANode];
+								if(m_mrrg->canOccupyLinkInMRRG(preLink,cyclepre+1,addcost,m_II)and m_mrrg->canOccupyLinkInUnSubmit(preLink,cyclepre+1,addcost,m_II)){
+									successFindPath  = true;
+									break;
+								}else{
+									break;
+								}
+							}else{
+								break;
+							}
+						}else{
+							successFindPath = true;
+							break;
+						}
+					}
 				}
 				time++;
 			}
@@ -276,8 +306,21 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 			while(1){
 				CGRALink* currentLink = mindisCGRANode->getOutLinkto(neighbor);
 				//if the CGRALink to neighbor can be occupied in this cycle in MRRG, then add the neighbor to current path.
-				if(m_mrrg->canOccupyLinkInMRRG(currentLink,cycle,m_II) and m_mrrg->canOccupyLinkInUnSubmit(currentLink,cycle,m_II) ){
-					int cost = distance[mindisCGRANode]+(cycle - timing[mindisCGRANode]) + 1;
+				if(m_mrrg->canOccupyLinkInMRRG(currentLink,cycle,1,m_II) and m_mrrg->canOccupyLinkInUnSubmit(currentLink,cycle,1,m_II) ){
+					int addcost = cycle -timing[mindisCGRANode] + 1;
+					if(addcost>1){//mean need to save the data in preCGRANode in path for addcost-1 cycles,if not satisfy the sitation below will break;
+						if(previous[mindisCGRANode] !=NULL){
+							CGRANode* preCGRANode = previous[mindisCGRANode];
+							CGRALink* preLink = m_cgra->getEdgefrom(preCGRANode,mindisCGRANode);
+							int cyclepre = timing[preCGRANode];
+							if(m_mrrg->canOccupyLinkInMRRG(preLink,cyclepre+1,addcost-1,m_II)==false or m_mrrg->canOccupyLinkInUnSubmit(preLink,cyclepre+1,addcost-1,m_II)==false){
+									break;
+							}
+						}else{//previous[mindisCGRANode] == NULL; mean the node's fu's data need to save in fu for more than one cycle,we not allow this now
+							break;
+						}
+					}
+					int cost = distance[mindisCGRANode] + addcost;
 					if(cost < distance[neighbor]){
 						distance[neighbor] = cost;
 						timing[neighbor] = cycle + 1;

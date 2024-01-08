@@ -73,20 +73,25 @@ void MRRG::MRRGclear(){
 	m_unSubmitLinks.clear();
 }
 
-bool MRRG::canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_II){
+bool MRRG::canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II){
 	//in MRRG
 	for(int c=t_cycle;c<m_cycles;c=c+t_II){
-		if(m_LinkInfos[t_cgraLink]->m_occupied_state[c] != LINK_NOT_OCCUPY)
+		for(int d = 0; d < t_duration; d++){
+			if(m_LinkInfos[t_cgraLink]->m_occupied_state[c+d] != LINK_NOT_OCCUPY)
 						return false;
+		}
 	}
 	return true;
 }
 
-bool MRRG::canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_II){
+bool MRRG::canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II){
 	for(unSubmitLink* unsubmitlink: m_unSubmitLinks){
 		if(unsubmitlink->link == t_cgraLink){
-			if(unsubmitlink->cycle >= t_cycle and (unsubmitlink->cycle - t_cycle)%t_II == 0){
-				return false;
+			for(int d = 0; d<t_duration; d++){
+				if(unsubmitlink->cycle >= t_cycle+d and (unsubmitlink->cycle - t_cycle-d)%t_II == 0 and 
+												unsubmitlink->OccupyState != LINK_NOT_OCCUPY){
+					return false;
+				}
 			}
 		}
 	}

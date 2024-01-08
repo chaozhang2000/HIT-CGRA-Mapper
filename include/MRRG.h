@@ -94,10 +94,10 @@ class MRRG {
 
 		/**judge if the cgraLink can be occupy in MRRG
 		 */
-		bool canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_II);
+		bool canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II);
 		/**judge if the cgraLink can be occupy in unsubmit CGRALinks
 		 */
-		bool canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_II);
+		bool canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II);
 		/**judge if the cgraNode can be occupy in MRRG
 		 */
 		bool canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_II);

@@ -76,7 +76,7 @@ void MRRG::MRRGclear(){
 bool MRRG::canOccupyLinkInMRRG(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II){
 	//in MRRG
 	for(int c=t_cycle;c<m_cycles;c=c+t_II){
-		for(int d = 0; d < t_duration; d++){
+		for(int d = 0; d < t_duration and c+d < m_cycles; d++){
 			if(m_LinkInfos[t_cgraLink]->m_occupied_state[c+d] != LINK_NOT_OCCUPY)
 						return false;
 		}
@@ -98,10 +98,12 @@ bool MRRG::canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_durati
 	return true;
 }
 
-bool MRRG::canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_II){
+bool MRRG::canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_duration,int t_II){
 	for(int c=t_cycle;c<m_cycles;c=c+t_II){
-		if(m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c] != NULL)
+		for(int d= 0;d<t_duration and c+d < m_cycles;d++){
+			if(m_NodeInfos[t_cgraNode]->m_OccupiedByNode[c+d] != NULL)
 						return false;
+		}
 	}
 	return true;
 }

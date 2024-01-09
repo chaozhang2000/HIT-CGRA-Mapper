@@ -100,7 +100,7 @@ class MRRG {
 		bool canOccupyLinkInUnSubmit(CGRALink* t_cgraLink,int t_cycle,int t_duration,int t_II);
 		/**judge if the cgraNode can be occupy in MRRG
 		 */
-		bool canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_II);
+		bool canOccupyNodeInMRRG(CGRANode* t_cgraNode,int t_cycle,int t_duration,int t_II);
 
 
 		/**schedule the CGRANode in the MRRG

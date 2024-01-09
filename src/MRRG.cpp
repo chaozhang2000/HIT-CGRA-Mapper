@@ -63,6 +63,10 @@ void MRRG::MRRGclear(){
 			}
     }
   }
+	clearUnsubmit();
+}
+
+void MRRG::clearUnsubmit(){
 	for(unSubmitLink* unsubmitlink: m_unSubmitLinks){
 		delete unsubmitlink;
 	}

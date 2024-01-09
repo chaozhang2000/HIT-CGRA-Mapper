@@ -50,7 +50,14 @@ void Mapper::heuristicMap(){
 			}
 			//handle the second situation,the InstNode has all preInst Mapped
 			else if(allPreInstNodeMapped(*InstNode)){
-				continue;
+				outs()<<"DFGNode"<<(*InstNode)->getID()<<"all PreInstNodeMapped\n";
+				bool success = getMapPathsandScheduleforInstNode(*InstNode);
+				if(success){
+					m_mrrg->submitschedule();
+					continue;
+				}else{
+					break;
+				}
 			}
 			else{
 				assert("this DFGInstNode has some preInstNode mapped and also has some preInstNode not mapped, this should not happened,Mapper has unfixed bugs");
@@ -130,11 +137,118 @@ map<int,CGRANode*>* Mapper::getMapPathforStartInstNode(DFGNodeInst* t_InstNode){
 	}
 }
 
+/** this function is used to find the paths from InstNode's all preNode to current InstNode, is used when all preNode has been mapped. after find the paths,the paths will also be schedule.
+ * @return true: find paths, and the schedule can be submit
+ */
+bool Mapper::getMapPathsandScheduleforInstNode(DFGNodeInst* t_InstNode){
+	list<map<int,CGRANode*>*>* mincostpaths = NULL;//find the mincostpaths,to every cgranode
+	int mincost = m_mrrg->getMRRGcycles() + 1;
+
+	for(int r = 0; r< m_cgra->getrows();r++){
+		for(int c = 0; c< m_cgra->getcolumns();c++){
+			CGRANode* cgraNode = m_cgra->nodes[r][c];
+			if(cgraNode->canSupport(t_InstNode->getOpcodeName()) and cgraNode->isdisable()==false){
+				list<map<int,CGRANode*>*>* paths = getPathsforInstNodetoCGRANode(t_InstNode,cgraNode);
+				if(paths->size()!=0){
+#ifdef CONFIG_MAP_DEBUG_PATH 
+					for(map<int,CGRANode*>* path: *paths){
+						outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" success!\n  Path:";
+						dumpPath(path);
+					}
+#endif
+					//if find the paths to a cgranode, only save the mincostpaths
+					map<int,CGRANode*>::reverse_iterator rit = paths->front()->rbegin();
+					if((*rit).first<mincost){
+						mincost= (*rit).first;
+						if(mincostpaths !=NULL){for(map<int,CGRANode*>* path:*mincostpaths){delete path;} delete mincostpaths;}
+						mincostpaths= paths;
+					}
+				}
+				else{
+#ifdef CONFIG_MAP_DEBUG_PATH 
+					outs()<<"Try to find path for DFGNode"<<t_InstNode->getID()<<" to CGRANode"<< cgraNode->getID()<<" falied,can't find path!\n"; 
+#endif
+					for(map<int,CGRANode*>* path:*paths){delete path;} 
+					delete paths;
+				}
+			}
+		}
+	}
+	if(mincostpaths != NULL){
+		bool havemappeddst = false;
+		for(map<int,CGRANode*>* path:*mincostpaths){
+			schedule(path,t_InstNode,!havemappeddst);
+			delete path;
+			havemappeddst = true;
+		}
+		delete mincostpaths;
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+list<map<int,CGRANode*>*>* Mapper::getPathsforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* cgraNode){
+	list<map<int,CGRANode*>*>* paths = new list<map<int,CGRANode*>*>;
+	map<int,CGRANode*>* longestpath = NULL;
+	DFGNodeInst* longestpathpreInstNode  = NULL;
+	int maxpathlastcycle = 0;
+	//first check the path from each preNode to current node can be found,
+	//and find the longestpath
+	for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
+		map<int,CGRANode*>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,cgraNode);
+		if(temppath == NULL){//one preInstNode to current node can't find path, return
+			if(longestpath != NULL) delete longestpath;
+			delete paths;
+			return NULL;
+			//if the temmpath is found save it to the tmppaths,and find the longest temmpath first schedule.
+		}else{
+			map<int,CGRANode*>::reverse_iterator rit = temppath->rbegin();
+			if((*rit).first>= maxpathlastcycle){
+			maxpathlastcycle = (*rit).first;
+			if(longestpath!=NULL)delete longestpath;
+			longestpath = temppath;
+			longestpathpreInstNode = preInstNode;
+			}
+		}
+	}
+
+	//found the longestpath, schedule the path,then find the path for other preNode.
+	schedule(longestpath,t_InstNode,true);
+	paths->push_back(longestpath);
+	for(DFGNodeInst* preInstNode: *(t_InstNode->getPredInstNodes())){
+		if(preInstNode != longestpathpreInstNode){
+			map<int,CGRANode*>* temppath = Dijkstra_search(preInstNode,t_InstNode,m_mapInfo[preInstNode]->cgraNode,cgraNode);
+			if(temppath == NULL){//the second path can't find
+				delete longestpath;
+				delete paths;
+				m_mrrg->clearUnsubmit();
+				return NULL;
+			}else{
+				map<int,CGRANode*>::reverse_iterator rit = temppath->rbegin();
+				if((*rit).first> maxpathlastcycle){//the second path is too long
+					delete temppath;
+					delete longestpath;
+					delete paths;
+					m_mrrg->clearUnsubmit();
+					return NULL;
+				}
+				else{ //the second path is short may satisfyTODO!!!!
+					paths->push_back(temppath);
+					m_mrrg->clearUnsubmit();
+					return paths;
+				}
+			}
+		}
+	}
+	return NULL;
+}
 /** this function is used to get all possible map paths for a DFGNode.
  *	it get paths to every CGRANodes, and save pathes in t_paths
  *	@param t_InstNode: the DFGNode need to be mapped
  *	@param t_paths: save the pathes
  */
+/*
 void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANode*>*>* t_paths){
 	for(int r = 0; r< m_cgra->getrows();r++){
 		for(int c = 0; c< m_cgra->getcolumns();c++){
@@ -157,6 +271,7 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANod
 		}
 	}
 }
+*/
 
 /** this function try to get a map path to a certain CGRANode for a DFGNode .
  *  if t_InstNode has predNodes have been mapped,it will travels all mapped preNodes and try to find a longest path from the CGRANode which a preNode is mapped,to the CGRANode which t_InstNode want to map to.choose the longest path because we need to route all preNode to this node, if choose the shorest path,some preNode will route failed.
@@ -164,6 +279,7 @@ void Mapper::getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANod
  *	@param t_cgraNode: the CGRANode where the DFGNode is hoped to map to
  *	@return the path
  */
+/*
 map<int,CGRANode*>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode){
 			map<int,CGRANode*>* path = NULL;
 			bool allPredNodenotMapped = true;
@@ -221,6 +337,7 @@ map<int,CGRANode*>* Mapper::getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode
 			}
 			return NULL;
 }
+*/
 
 /** this function try to find a path to a certain CGRANode for a DFGNode,when this DFGNode has some predNode which has been mapped.The path is from the CGRANode which map the preDFGNode to the CGRANode where the succDFGNode want to map
  * use dijkstara search to find this path,if find this path,return path,else return NULL

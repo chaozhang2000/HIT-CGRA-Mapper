@@ -89,6 +89,7 @@ class MRRG {
 		/**Clear the MRRG, init datas in it.
 		 */
 		void MRRGclear();
+		void clearUnsubmit();
 
 		int getMRRGcycles(){return m_cycles;}
 

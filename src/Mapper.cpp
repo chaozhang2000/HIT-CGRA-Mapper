@@ -246,8 +246,8 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 	distance[t_srcCGRANode] = 0;//set the distance of start node 0,start search
 
 	while (searchPool.size()!=0){//search the searchPool,until find the path to t_dstCGRANode
-		int mindistance = m_mrrg->getMRRGcycles() + 1;
-		CGRANode* mindisCGRANode;
+		int mindistance = m_mrrg->getMRRGcycles();
+		CGRANode* mindisCGRANode = NULL;
 		//find the mindistance node,this also choose a path,and this node is the latest node in path, we will try to search the next node and add to this path.
 		for(CGRANode* node:searchPool){
 			if(distance[node] < mindistance){
@@ -255,48 +255,29 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 				mindisCGRANode = node;
 			}
 		}
+		if(mindisCGRANode == NULL) break;
 		searchPool.remove(mindisCGRANode);
 
 		if(mindisCGRANode == t_dstCGRANode){//find the target CGRANode,exit searching
-			int time = timing[t_dstCGRANode];
-			while(time < m_mrrg->getMRRGcycles()){
-				if(m_mrrg->canOccupyNodeInMRRG(t_dstCGRANode,time,1,m_II)==true){
-					if(t_dstCGRANode == t_srcCGRANode){// the sitiation dstCGRANode == srcCGRANode, only support CGRAx(n)->CGRAx(n+1)
-						if(time == timing[t_dstCGRANode] + 1){
+			if(t_dstCGRANode != t_srcCGRANode){//the situation dstCGRANode != srcCGRANode,when update the search date,we have consider the all situation,if promgram get here,mean the path is found
+				successFindPath = true;
+				break;
+			}else{
+				int time = timing[t_dstCGRANode];
+				while(time < m_mrrg->getMRRGcycles()){
+					if(m_mrrg->canOccupyNodeInMRRG(t_dstCGRANode,time,1,m_II)==true){
+						if(time == timing[t_dstCGRANode] + 1){//TODO the sitiation dstCGRANode == srcCGRANode, only support CGRAx(n)->CGRAx(n+1)
 							successFindPath = true;
 							break;
 						}
-						else{
+						else{ //TODO
 							break;
 						}
 					}
-					else{//the situation dstCGRANode != srcCGRANode, if the t_dstCGRANode need to wait, we need to save the data in the preCGRANode.
-						int addcost = time-timing[t_dstCGRANode];
-						if(addcost >=1){
-							CGRANode* preCGRANode = previous[t_dstCGRANode];
-							if(previous[preCGRANode] != NULL){
-								CGRANode* prepreCGRANode = previous[preCGRANode];
-								CGRALink* preLink = m_cgra->getEdgefrom(prepreCGRANode,preCGRANode);
-								int cyclepre = timing[prepreCGRANode];
-								if(m_mrrg->canOccupyLinkInMRRG(preLink,cyclepre+1,addcost,m_II)and m_mrrg->canOccupyLinkInUnSubmit(preLink,cyclepre+1,addcost,m_II)){
-									successFindPath  = true;
-									break;
-								}else{
-									break;
-								}
-							}else{
-								break;
-							}
-						}else{
-							successFindPath = true;
-							break;
-						}
-					}
+					time++;
 				}
-				time++;
+				break;
 			}
-			timing[t_dstCGRANode] = time;
-			break;
 		}
 
 		//haven't find the target CGRANode,update the distance and arrive timing from t_srcCGRANode to currentpath's latest node's neighbor nodes on current path.(add path head's neighbor to the path)
@@ -308,11 +289,11 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 				//if the CGRALink to neighbor can be occupied in this cycle in MRRG, then add the neighbor to current path.
 				if(m_mrrg->canOccupyLinkInMRRG(currentLink,cycle,1,m_II) and m_mrrg->canOccupyLinkInUnSubmit(currentLink,cycle,1,m_II) ){
 					int linkaddcost = cycle -timing[mindisCGRANode] + 1;
-					if(neighbor != t_dstCGRANode){/*
-						updateDataWhenNeighborIsDst(mindisCGRANode,neighbor,&distance,&timing,&previous,linkaddcost);
-						break;*/
+					if(neighbor == t_dstCGRANode){
+						updateSearchData(neighbor == t_dstCGRANode,mindisCGRANode,neighbor,&distance,&timing,&previous,linkaddcost);
+						break;
 					}else{
-						updateDataWhenNeighborIsNotDst(mindisCGRANode,neighbor,&distance,&timing,&previous,linkaddcost);
+						updateSearchData(neighbor != t_dstCGRANode,mindisCGRANode,neighbor,&distance,&timing,&previous,linkaddcost);
 						break;
 					}
 				}
@@ -324,6 +305,7 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 			}
 		}
 	}
+
 	//if the path is found, add it to path and return path
 	map<int,CGRANode*>* path = NULL;
 	if(successFindPath){
@@ -343,30 +325,48 @@ map<int,CGRANode*>* Mapper::Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeIns
 	return path;
 }
 
-/**this function used to update distance timing previous data in Dij search,when the neighbor is not dstCGRANode
+/**this function used to update distance timing previous data in Dij search,when the neighbor is dst_CGRANode or not.
  * only used in Dij search function
+ * this need to consider more than when the neighbor is not the Dst.
+ * because when the addcost from current CGRANode to the dstCGRANode is not only the linkaddcost which is caused by Linkoccupy
+ * but also the nodeaddcost,because when the Link can be occupied ,the dst_cgraNode may busy,we need to wait until it can be occupied.
+ * when waitting,we we save the data in PreCGRANode,until the Node and the Link to dstCGRANode can be occupied.
  */
-void Mapper::updateDataWhenNeighborIsNotDst(CGRANode* node,CGRANode*neighbor,map<CGRANode*,int>*distance,map<CGRANode*,int>*timing,map<CGRANode*,CGRANode*>*previous,int linkaddcost){
-	if(linkaddcost>1){//linkaddcost > 1 mean the cgraLink from node to neighbor is occupied so the data can't transform now,we need to consider the data temp save.
+void Mapper::updateSearchData(bool neighborisDst,CGRANode* node,CGRANode*neighbor,map<CGRANode*,int>*distance,map<CGRANode*,int>*timing,map<CGRANode*,CGRANode*>*previous,int linkaddcost){
+	int nodeaddcost = 0;
+	int time = (*timing)[node]+linkaddcost;
+	if(neighborisDst){//if dst is Neighbor,we need to calculate nodeaddcost.
+		while(time < m_mrrg->getMRRGcycles()){
+			CGRALink* linktodst = m_cgra->getEdgefrom(node,neighbor);
+			if(m_mrrg->canOccupyNodeInMRRG(neighbor,time,1,m_II)and m_mrrg->canOccupyLinkInMRRG(linktodst,time-1,1,m_II)
+										and m_mrrg->canOccupyLinkInUnSubmit(linktodst,time-1,1,m_II)){
+					break;
+			}
+			time++;
+		}
+	}
+	nodeaddcost = time -(*timing)[node] - linkaddcost;
+	int addcost = linkaddcost + nodeaddcost;
+	if(addcost > 1){//linkaddcost > 1 mean the cgraLink from node to neighbor is occupied so the data can't transform now,we need to consider the data temp save.
 		if((*previous)[node] !=NULL){// the data need to save in the preCGRANode's reg,so the link to preCGRANode's reg should be occupy.
 			CGRANode* preCGRANode = (*previous)[node];
 			CGRALink* preLink = m_cgra->getEdgefrom(preCGRANode,node);
 			int cyclepre = (*timing)[preCGRANode];
-			if(m_mrrg->canOccupyLinkInMRRG(preLink,cyclepre+1,linkaddcost-1,m_II)==false or m_mrrg->canOccupyLinkInUnSubmit(preLink,cyclepre+1,linkaddcost-1,m_II)==false){
+			if(m_mrrg->canOccupyLinkInMRRG(preLink,cyclepre+1,addcost-1,m_II)==false or m_mrrg->canOccupyLinkInUnSubmit(preLink,cyclepre+1,addcost-1,m_II)==false){
 				return;
 			}
 		}else{//previous[mindisCGRANode] == NULL; mean the preCGRANode is the begining of path, data comes from it's fu, if we need to save data in this preCGRANode,we need to make sure the fu do not do other calculate when we save data.
 			int cyclenow = (*timing)[node];
-			if(m_mrrg->canOccupyNodeInMRRG(node,cyclenow+1,linkaddcost-1,m_II) == false){
+			if(m_mrrg->canOccupyNodeInMRRG(node,cyclenow+1,addcost-1,m_II) == false){
 				return;
 			}
 		}
 	}
 	//if program arrive here mean we can update data.
-	int cost = (*distance)[node] + linkaddcost;
+	int cost = (*distance)[node] + addcost;
 	if(cost < (*distance)[neighbor]){
 		(*distance)[neighbor] = cost;
-		(*timing)[neighbor] = (*timing)[node] + linkaddcost;
+		(*timing)[neighbor] = (*timing)[node] + addcost;
 		(*previous)[neighbor] = node;
 	}
 }

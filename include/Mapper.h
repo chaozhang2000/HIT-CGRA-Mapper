@@ -30,7 +30,7 @@ class Mapper{
 		void getMapPathsforInstNode(DFGNodeInst* t_InstNode,list<map<int,CGRANode*>*>* t_paths);
 		map<int,CGRANode*>* getPathforInstNodetoCGRANode(DFGNodeInst* t_InstNode,CGRANode* t_cgraNode);
 		map<int,CGRANode*>* Dijkstra_search(DFGNodeInst* t_srcDFGNode,DFGNodeInst* t_dstDFGNode,CGRANode* t_srcCGRANode,CGRANode* t_dstCGRANode);
-		void updateDataWhenNeighborIsNotDst(CGRANode* node,CGRANode*neighbor,map<CGRANode*,int>*distance,map<CGRANode*,int>*timing,map<CGRANode*,CGRANode*>*previous,int linkaddcost);
+		void updateSearchData(bool neighborisDst,CGRANode* node,CGRANode*neighbor,map<CGRANode*,int>*distance,map<CGRANode*,int>*timing,map<CGRANode*,CGRANode*>*previous,int linkaddcost);
 		map<int,CGRANode*>* getmaincostPath(list<map<int,CGRANode*>*>* paths);
 		//new add
 		bool allPreInstNodeNotMapped(DFGNodeInst* t_InstNode);
